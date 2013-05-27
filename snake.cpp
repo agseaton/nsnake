@@ -47,8 +47,8 @@ class fruit
 	
 };
 
-bool isFruitReady(int curTime, int startTime); //Checks whether it is time to produce a fruit
-void placeFruit(list<fruit> fruitList); //Adds a fruit to the list - the fruits get drawn later
+bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
+void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
 void gameOver();
 
 int main()
@@ -178,14 +178,14 @@ int main()
 	return 0;
 }
 
-bool isFruitReady(int curTime, int startTime)
+bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
 {
 	//Fill this in!
 	
 	return 0;
 }
 
-void placeFruit(list<fruit> fruitList)
+void placeFruit(list<fruit> &fruitList)
 {
 	//Create new fruit
 	//Add it to some vector/list thing
