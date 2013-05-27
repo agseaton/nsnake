@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <string.h>
 #include <deque>
+#include <list>
 #include <cstdlib>
 #include <time.h>
 #include <unistd.h>
@@ -28,7 +29,7 @@ class fruit
 	public:
 	coord position;
 	int initTime;
-	int lifeTime;
+	int lifeTime; //-1 means infinite
 	int fruitType;
 	
 	fruit(int y0,int x0, int initTime0, int lifeTime0, int fruitType0) : position(y0,x0)
@@ -47,17 +48,21 @@ class fruit
 };
 
 bool isFruitReady(int curTime, int startTime); //Checks whether it is time to produce a fruit
-void placeFruit();
+void placeFruit(list<fruit> fruitList); //Adds a fruit to the list - the fruits get drawn later
 void gameOver();
 
 int main()
 {
 	deque<coord> snake; //Position of snake
 	deque<coord>::iterator snakeIterator; //Iterator for snake
+	list<fruit> fruitMarket; //List of fruits currently in use
+	list<fruit>::iterator fruitIterator; //Iterator for fruits
+	
 	int initTime = 0; //Epoch time of start of game (seconds)
 	int curTime = 0; //Current time, measured in seconds with 0 as time game started
 	int ch; //Stores latest character from stdin
 	int row,col; //Size of play area (currently dynamic)
+	
 	int direction=-1; //Direction of motion of snake (-1: uninitialised, 0: up, 1: down, 2: right, 3: left)
 	coord predictor(-1,-1); //Predicted position of snake
 	
@@ -89,10 +94,8 @@ int main()
 		else if(ch == KEY_RIGHT) { if(direction != 3) direction=2; }
 		else if(ch == KEY_LEFT) { if(direction != 2) direction=3; }
 		
-		if(direction != -1) //Only do this if the game has started!
-		{
-			if(isFruitReady(curTime, initTime)) placeFruit();
-			
+		if(direction != -1) //Only do this stuff if the game has started!
+		{			
 			//Calculate where the snake will move
 			predictor = snake.front();
 			
@@ -101,7 +104,24 @@ int main()
 			else if(direction == 2) predictor.x++;
 			else if(direction == 3)	predictor.x--;
 			
-			//Check if snake is about to hit a fruit
+			//Sort out fruit related issues
+			if(isFruitReady(curTime, initTime)) placeFruit(fruitMarket); //If a fruit is ready to be placed, place it!
+			
+			//Run through fruit and remove any the snake is about to eat or that are about to expire
+			for(fruitIterator=fruitMarket.begin(); fruitIterator != fruitMarket.end(); fruitIterator++)
+			{
+				if(predictor == (*fruitIterator).position)
+				{
+					fruitIterator = fruitMarket.erase(fruitIterator);
+					fruitIterator--;
+				}
+				
+				if((curTime > ((*fruitIterator).initTime+(*fruitIterator).lifeTime)) && ((*fruitIterator).lifeTime > -1))
+				{
+					fruitIterator = fruitMarket.erase(fruitIterator);
+					fruitIterator--;
+				}
+			}
 			
 			//Check if snake is about to hit a wall
 			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2) gameOver();
@@ -138,6 +158,9 @@ int main()
 		}
 		mvprintw((snake.front()).y,(snake.front()).x,"O");
 		
+		//Draw fruit!
+		for(fruitIterator=fruitMarket.begin(); fruitIterator != fruitMarket.end(); fruitIterator++) mvprintw((*fruitIterator).position.y,(*fruitIterator).position.x,"F");
+		
 		//Move pointer back to top left hand corner
 		move(0,0);
 		
@@ -162,7 +185,7 @@ bool isFruitReady(int curTime, int startTime)
 	return 0;
 }
 
-void placeFruit()
+void placeFruit(list<fruit> fruitList)
 {
 	//Create new fruit
 	//Add it to some vector/list thing
