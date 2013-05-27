@@ -22,6 +22,29 @@ class coord
 	}
 };
 
+class fruit
+{
+	public:
+	coord position;
+	int initTime;
+	int lifeTime;
+	int fruitType;
+	
+	fruit(int y0,int x0, int initTime0, int lifeTime0, int fruitType0) : position(y0,x0)
+	{
+		initTime = initTime0;
+		lifeTime = lifeTime0;
+		fruitType = fruitType0;
+	}
+	fruit(coord position0, int initTime0, int lifeTime0, int fruitType0) : position(position0)
+	{
+		initTime = initTime0;
+		lifeTime = lifeTime0;
+		fruitType = fruitType0;
+	}
+	
+};
+
 void gameOver();
 
 int main()
