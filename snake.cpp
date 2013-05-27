@@ -28,20 +28,17 @@ class fruit
 {
 	public:
 	coord position;
-	int initTime;
-	int lifeTime; //-1 means infinite
+	int expiryTime; //-1 means infinite
 	int fruitType;
 	
-	fruit(int y0,int x0, int initTime0, int lifeTime0, int fruitType0) : position(y0,x0)
+	fruit(int y0,int x0, int expiryTime0, int fruitType0) : position(y0,x0)
 	{
-		initTime = initTime0;
-		lifeTime = lifeTime0;
+		expiryTime = expiryTime0;
 		fruitType = fruitType0;
 	}
-	fruit(coord position0, int initTime0, int lifeTime0, int fruitType0) : position(position0)
+	fruit(coord position0, int expiryTime0, int fruitType0) : position(position0)
 	{
-		initTime = initTime0;
-		lifeTime = lifeTime0;
+		expiryTime = expiryTime0;
 		fruitType = fruitType0;
 	}
 	
@@ -65,6 +62,8 @@ int main()
 	
 	int direction=-1; //Direction of motion of snake (-1: uninitialised, 0: up, 1: down, 2: right, 3: left)
 	coord predictor(-1,-1); //Predicted position of snake
+	bool gotFruit = false;
+	bool growSnake = false;
 	
 	//Initialise ncurses
 	initscr();
@@ -76,8 +75,14 @@ int main()
 	//Get size of window
 	getmaxyx(stdscr,row,col);
 	
+	//And God created the snake, saying, "Be fruitful and multiply"
 	snake.push_front(coord(row/2,col/2));
 	snake.push_front(coord(row/2,col/2+1));
+	snake.push_front(coord(row/2-1,col/2+1));
+	snake.push_front(coord(row/2-1,col/2));
+	
+	//Add a test fruit!
+	fruitMarket.push_front(fruit(row/2,col/2,-1,0));
 	
 	while(true)
 	{
@@ -105,7 +110,13 @@ int main()
 			else if(direction == 3)	predictor.x--;
 			
 			//Sort out fruit related issues
-			if(isFruitReady(curTime, initTime)) placeFruit(fruitMarket); //If a fruit is ready to be placed, place it!
+			if(isFruitReady(curTime, fruitMarket)) placeFruit(fruitMarket); //If a fruit is ready to be placed, place it!
+			
+			if(gotFruit)
+			{
+				growSnake = true;
+				gotFruit = false;
+			}
 			
 			//Run through fruit and remove any the snake is about to eat or that are about to expire
 			for(fruitIterator=fruitMarket.begin(); fruitIterator != fruitMarket.end(); fruitIterator++)
@@ -114,9 +125,10 @@ int main()
 				{
 					fruitIterator = fruitMarket.erase(fruitIterator);
 					fruitIterator--;
+					gotFruit = true;
 				}
 				
-				if((curTime > ((*fruitIterator).initTime+(*fruitIterator).lifeTime)) && ((*fruitIterator).lifeTime > -1))
+				if((curTime > (*fruitIterator).expiryTime) && ((*fruitIterator).expiryTime != -1))
 				{
 					fruitIterator = fruitMarket.erase(fruitIterator);
 					fruitIterator--;
@@ -127,10 +139,15 @@ int main()
 			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2) gameOver();
 			
 			//Check if snake is about to hit itself
-			for(snakeIterator=snake.begin(); snakeIterator != snake.end(); snakeIterator++)	if(predictor == *snakeIterator) gameOver();
+			//Note: the snake can move into the space currently occupied by the last part of its tail, unless it has just received a fruit.
+			for(snakeIterator=snake.begin();
+			    ((snakeIterator != (--snake.end())) && (!growSnake)) || ((snakeIterator != snake.end()) && growSnake);
+			    snakeIterator++)
+			{ if(predictor == *snakeIterator) gameOver(); }
 			
 			//Move snake
-			snake.pop_back();
+			if(growSnake != true) snake.pop_back();
+			else growSnake = false;
 			snake.push_front(predictor);
 		}
 				
@@ -168,7 +185,7 @@ int main()
 		refresh();
 		
 		//Wait for a second
-		usleep(0.5*1000000);
+		usleep(1*1000000);
 	}
 	
 	while(ch != 'q') ch = getch();
