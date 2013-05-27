@@ -2,6 +2,7 @@
 #include <string.h>
 #include <deque>
 #include <cstdlib>
+#include <time.h>
 #include <unistd.h>
 
 using namespace std;
@@ -45,17 +46,20 @@ class fruit
 	
 };
 
+bool isFruitReady(int curTime, int startTime); //Checks whether it is time to produce a fruit
+void placeFruit();
 void gameOver();
 
 int main()
 {
-	deque<coord> snake;
-	deque<coord>::iterator snakeIterator;
-	int ch;
-	int row,col;
-	int direction=-1;
-	bool collision=0;
-	coord predictor(-1,-1);
+	deque<coord> snake; //Position of snake
+	deque<coord>::iterator snakeIterator; //Iterator for snake
+	int initTime = 0; //Epoch time of start of game (seconds)
+	int curTime = 0; //Current time, measured in seconds with 0 as time game started
+	int ch; //Stores latest character from stdin
+	int row,col; //Size of play area (currently dynamic)
+	int direction=-1; //Direction of motion of snake (-1: uninitialised, 0: up, 1: down, 2: right, 3: left)
+	coord predictor(-1,-1); //Predicted position of snake
 	
 	//Initialise ncurses
 	initscr();
@@ -85,9 +89,10 @@ int main()
 		else if(ch == KEY_RIGHT) { if(direction != 3) direction=2; }
 		else if(ch == KEY_LEFT) { if(direction != 2) direction=3; }
 		
-		//Work for a Si!
-		if(direction != -1)
+		if(direction != -1) //Only do this if the game has started!
 		{
+			if(isFruitReady(curTime, initTime)) placeFruit();
+			
 			//Calculate where the snake will move
 			predictor = snake.front();
 			
@@ -148,6 +153,19 @@ int main()
 	endwin();
 	
 	return 0;
+}
+
+bool isFruitReady(int curTime, int startTime)
+{
+	//Fill this in!
+	
+	return 0;
+}
+
+void placeFruit()
+{
+	//Create new fruit
+	//Add it to some vector/list thing
 }
 
 void gameOver()
