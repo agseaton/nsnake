@@ -49,7 +49,6 @@ class fruit
 
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
 void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
-void mainMenu();
 int playGame();
 void gameOver();
 
@@ -82,7 +81,6 @@ int main()
 		clear();
 		
 		//Get size of console
-		//Get size of window
 		getmaxyx(stdscr,row,col);
 		
 		//Display main menu
@@ -156,7 +154,7 @@ bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
 void placeFruit(list<fruit> &fruitList)
 {
 	//Create new fruit
-	//Add it to some vector/list thing
+	//Add it to list of fruits
 }
 
 int playGame()
@@ -321,6 +319,9 @@ void gameOver()
 {
 	int row, col;
 	char ch;
+	
+	//Set character reading to be blocking
+	nodelay(stdscr,FALSE);
 	
 	//Clear window
 	clear();
