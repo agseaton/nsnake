@@ -55,16 +55,20 @@ void gameOver();
 
 //Character string constants
 const char gameName[] = "SNAKE!";
-const char menuOptionPlay[] = "* Start game ('p')";
-const char menuOptionOptions[] = "* Options ('o')";
-const char menuOptionHighScore[] = "* High Scores ('s')";
-const char menuOptionCredits[] = "* Credits ('c')";
-const char menuOptionQuit[] = "* Quit ('q')";
+const char menuOptionPlay[] = "Start game ('p')";
+const char menuOptionOptions[] = "Options ('o')";
+const char menuOptionHighScore[] = "High Scores ('s')";
+const char menuOptionCredits[] = "Credits ('c')";
+const char menuOptionQuit[] = "Quit ('q')";
+
+const char* menuOptions[] = {menuOptionPlay, menuOptionOptions, menuOptionHighScore, menuOptionCredits, menuOptionQuit};
 
 int main()
 {
 	int ch;
 	int row,col; //Size of menu area (currently dynamic)
+	
+	int highlight = 0; //Item highlighted
 
 	//Initialise ncurses
 	initscr();
@@ -89,6 +93,9 @@ int main()
 		mvprintw(row/5+8,col/2-strlen(menuOptionCredits)/2,"%s",menuOptionCredits);
 		mvprintw(row/5+10,col/2-strlen(menuOptionQuit)/2,"%s",menuOptionQuit);
 		
+		mvprintw(row/5+2*highlight+2,col/2-strlen(menuOptions[highlight])/2-2,"*");
+		mvprintw(row/5+2*highlight+2,col/2-strlen(menuOptions[highlight])/2+strlen(menuOptions[highlight])+1,"*");
+		
 		refresh();
 		
 		move(0,0);
@@ -108,6 +115,28 @@ int main()
 		else if(ch == 's') { /*Display high scores*/ }
 		else if(ch == 'c') { /*Display credits*/ }
 		else if(ch == 'q') break;
+		else if(ch == KEY_UP)
+		{
+			if(highlight == 0) highlight = 4;
+			else highlight--;
+		}
+		else if(ch == KEY_DOWN)
+		{
+			if(highlight == 4) highlight = 0;
+			else highlight++;
+		}
+		else if(ch == '\n')
+		{
+			if(highlight == 0)
+			{
+				int outcome = playGame();
+				continue;
+			}
+			else if(highlight == 1) { /*Display option menu*/ }
+			else if(highlight == 2) { /*Display high scores*/ }
+			else if(highlight == 3) { /*Display credits*/ }
+			else if(highlight == 4) break;
+		}
 	}
 	
 	endwin();
