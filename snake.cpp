@@ -49,9 +49,88 @@ class fruit
 
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
 void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
+void mainMenu();
+int playGame();
 void gameOver();
 
+//Character string constants
+const char gameName[] = "SNAKE!";
+const char menuOptionPlay[] = "* Start game ('p')";
+const char menuOptionOptions[] = "* Options ('o')";
+const char menuOptionHighScore[] = "* High Scores ('s')";
+const char menuOptionCredits[] = "* Credits ('c')";
+const char menuOptionQuit[] = "* Quit ('q')";
+
 int main()
+{
+	int ch;
+	int row,col; //Size of menu area (currently dynamic)
+
+	//Initialise ncurses
+	initscr();
+	raw();
+	keypad(stdscr,TRUE);
+	noecho();
+	
+	while(true)
+	{
+		//Clear display
+		clear();
+		
+		//Get size of console
+		//Get size of window
+		getmaxyx(stdscr,row,col);
+		
+		//Display main menu
+		mvprintw(row/5,col/2-strlen(gameName)/2,"%s",gameName);
+		mvprintw(row/5+2,col/2-strlen(menuOptionPlay)/2,"%s",menuOptionPlay);
+		mvprintw(row/5+4,col/2-strlen(menuOptionOptions)/2,"%s",menuOptionOptions);
+		mvprintw(row/5+6,col/2-strlen(menuOptionHighScore)/2,"%s",menuOptionHighScore);
+		mvprintw(row/5+8,col/2-strlen(menuOptionCredits)/2,"%s",menuOptionCredits);
+		mvprintw(row/5+10,col/2-strlen(menuOptionQuit)/2,"%s",menuOptionQuit);
+		
+		refresh();
+		
+		move(0,0);
+		
+		//Set character input as blocking
+		nodelay(stdscr,FALSE);
+		
+		//Get character from user
+		ch=getch();
+		
+		if(ch == 'p')
+		{
+			int outcome = playGame();
+			continue;
+		}
+		else if(ch == 'o') { /*Display option menu*/ }
+		else if(ch == 's') { /*Display high scores*/ }
+		else if(ch == 'c') { /*Display credits*/ }
+		else if(ch == 'q') break;
+	}
+	
+	endwin();
+	
+	return 0;
+}
+
+bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
+{
+	//Find the time at which the last fruit was placed
+	int latestFruitTime = 0;
+	for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) if(latestFruitTime > (*i).initTime) latestFruitTime = (*i).initTime;
+	
+	return 0;
+}
+
+void placeFruit(list<fruit> &fruitList)
+{
+	//Create new fruit
+	//Add it to some vector/list thing
+}
+
+int playGame()
 {
 	deque<coord> snake; //Position of snake
 	list<fruit> fruitMarket; //List of fruits currently in use
@@ -66,12 +145,11 @@ int main()
 	bool gotFruit = false;
 	bool growSnake = false;
 	
-	//Initialise ncurses
-	initscr();
-	raw();
-	keypad(stdscr,TRUE);
-	noecho();
+	//Set character reading to be non-blocking
 	nodelay(stdscr,TRUE);
+	
+	//Clear virtual window
+	clear();
 	
 	//Get size of window
 	getmaxyx(stdscr,row,col);
@@ -94,7 +172,7 @@ int main()
 		while(getch() != ERR);
 		
 		//Interpret user input
-		if(ch == 'q') break;
+		if(ch == 'q') return 0;
 		else if(ch == KEY_UP) { if(direction != 1) direction=0; }
 		else if(ch == KEY_DOWN) { if(direction != 0) direction=1; }
 		else if(ch == KEY_RIGHT) { if(direction != 3) direction=2; }
@@ -134,7 +212,7 @@ int main()
 					continue;
 				}
 				
-				//Remove fruit that are in the path of the snake
+				//Remove fruits that are in the path of the snake
 				if(predictor == (*i).position)
 				{
 					i = fruitMarket.erase(i);
@@ -144,14 +222,24 @@ int main()
 			}
 			
 			//Check if snake is about to hit a wall
-			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2) gameOver();
+			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2)
+			{
+				gameOver();
+				return 1;
+			}
 			
 			//Check if snake is about to hit itself
 			//Note: the snake can move into the space currently occupied by the last part of its tail, unless it has just received a fruit.
 			for(deque<coord>::iterator i=snake.begin();
 			    ((i != (--snake.end())) && (!growSnake)) || ((i != snake.end()) && growSnake);
 			    i++)
-			{ if(predictor == *i) gameOver(); }
+			{
+				if(predictor == *i)
+				{
+					gameOver();
+					return 1;
+				}
+			}
 			
 			//Move snake
 			if(growSnake != true) snake.pop_back();
@@ -198,27 +286,6 @@ int main()
 		//Wait for a second
 		usleep(1*1000000);
 	}
-	
-	while(ch != 'q') ch = getch();
-	
-	endwin();
-	
-	return 0;
-}
-
-bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
-{
-	//Find the time at which the last fruit was placed
-	int latestFruitTime = 0;
-	for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) if(latestFruitTime > (*i).initTime) latestFruitTime = (*i).initTime;
-	
-	return 0;
-}
-
-void placeFruit(list<fruit> &fruitList)
-{
-	//Create new fruit
-	//Add it to some vector/list thing
 }
 
 void gameOver()
@@ -248,8 +315,4 @@ void gameOver()
 	refresh();
 	
 	while(ch != 'q') ch = getch();
-	
-	//End the game
-	endwin();
-	exit(0);
 }
