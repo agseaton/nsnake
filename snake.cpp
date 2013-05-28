@@ -28,16 +28,19 @@ class fruit
 {
 	public:
 	coord position;
-	int expiryTime; //-1 means infinite
+	time_t initTime;
+	time_t expiryTime; //-1 means infinite
 	int fruitType;
 	
-	fruit(int y0,int x0, int expiryTime0, int fruitType0) : position(y0,x0)
+	fruit(int y0,int x0, time_t initTime0, time_t expiryTime0, int fruitType0) : position(y0,x0)
 	{
+		initTime = initTime0;
 		expiryTime = expiryTime0;
 		fruitType = fruitType0;
 	}
-	fruit(coord position0, int expiryTime0, int fruitType0) : position(position0)
+	fruit(coord position0, time_t initTime0, time_t expiryTime0, int fruitType0) : position(position0)
 	{
+		initTime = initTime0;
 		expiryTime = expiryTime0;
 		fruitType = fruitType0;
 	}
@@ -53,8 +56,8 @@ int main()
 	deque<coord> snake; //Position of snake
 	list<fruit> fruitMarket; //List of fruits currently in use
 	
-	int initTime = 0; //Epoch time of start of game (seconds)
-	int curTime = 0; //Current time, measured in seconds with 0 as time game started
+	time_t initTime = time(NULL); //Epoch time of start of game (seconds)
+	time_t gameTime = 0; //Current time, measured in seconds with 0 as time game started
 	int ch; //Stores latest character from stdin
 	int row,col; //Size of play area (currently dynamic)
 	
@@ -80,7 +83,7 @@ int main()
 	snake.push_front(coord(row/2-1,col/2));
 	
 	//Add a test fruit!
-	fruitMarket.push_front(fruit(row/2,col/2,-1,0));
+	fruitMarket.push_front(fruit(row/2,col/2,gameTime,-1,0));
 	
 	while(true)
 	{
@@ -98,7 +101,10 @@ int main()
 		else if(ch == KEY_LEFT) { if(direction != 2) direction=3; }
 		
 		if(direction != -1) //Only do this stuff if the game has started!
-		{			
+		{
+			//Get the time
+			gameTime = time(NULL)-initTime;
+			
 			//Calculate where the snake will move
 			predictor = snake.front();
 			
@@ -108,7 +114,7 @@ int main()
 			else if(direction == 3)	predictor.x--;
 			
 			//Sort out fruit related issues
-			if(isFruitReady(curTime, fruitMarket)) placeFruit(fruitMarket); //If a fruit is ready to be placed, place it!
+			if(isFruitReady(gameTime, fruitMarket)) placeFruit(fruitMarket); //If a fruit is ready to be placed, place it!
 			
 			if(gotFruit)
 			{
@@ -119,17 +125,21 @@ int main()
 			//Run through fruit and remove any the snake is about to eat or that are about to expire
 			for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
 			{
+				//Warning: Iterator after an item is removed may not be valid!
+				//Remove expiring fruit
+				if((gameTime > (*i).expiryTime) && ((*i).expiryTime != -1))
+				{
+					i = fruitMarket.erase(i);
+					i--;
+					continue;
+				}
+				
+				//Remove fruit that are in the path of the snake
 				if(predictor == (*i).position)
 				{
 					i = fruitMarket.erase(i);
 					i--;
 					gotFruit = true;
-				}
-				
-				if((curTime > (*i).expiryTime) && ((*i).expiryTime != -1))
-				{
-					i = fruitMarket.erase(i);
-					i--;
 				}
 			}
 			
@@ -176,7 +186,10 @@ int main()
 		//Draw fruit!
 		for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"F");
 		
-		//Move pointer back to top left hand corner
+		//Draw timer
+		mvprintw(0,col/2,"%i",gameTime);
+		
+		//Move cursor back to top left hand corner
 		move(0,0);
 		
 		//Draw to console
@@ -195,8 +208,9 @@ int main()
 
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
 {
-	//int latestFruitTime = 0;
-	//for(
+	//Find the time at which the last fruit was placed
+	int latestFruitTime = 0;
+	for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) if(latestFruitTime > (*i).initTime) latestFruitTime = (*i).initTime;
 	
 	return 0;
 }
@@ -209,6 +223,33 @@ void placeFruit(list<fruit> &fruitList)
 
 void gameOver()
 {
+	int row, col;
+	char ch;
+	
+	//Clear window
+	clear();
+	refresh();
+	
+	//Get size of window
+	getmaxyx(stdscr,row,col);
+	
+	//Print game over text
+	mvprintw(row/2-3,col/2-38,"  ____       _         _  _      _____          ___             _____  ___");
+	mvprintw(row/2-2,col/2-38," /    \\     / \\       / \\/ \\    |              /   \\  \\      / |      |   \\ ");
+	mvprintw(row/2-1,col/2-38,"|          /___\\     /      \\   |___          /     \\  \\    /  |___   |___/");
+	mvprintw(row/2,col/2-38,"|    ___  /     \\   /        \\  |             \\     /   \\  /   |      |   \\ ");
+	mvprintw(row/2+1,col/2-38," \\____/  /       \\ /          \\ |_____         \\___/     \\/    |_____ |    \\ ");
+	mvprintw(row-1,col/2-strlen("Press 'q' to return to menu")/2,"Press 'q' to return to menu");
+	
+	//Move pointer back to top left hand corner
+	move(0,0);
+	
+	//Draw to console
+	refresh();
+	
+	while(ch != 'q') ch = getch();
+	
+	//End the game
 	endwin();
 	exit(0);
 }
