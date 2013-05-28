@@ -51,9 +51,7 @@ void gameOver();
 int main()
 {
 	deque<coord> snake; //Position of snake
-	deque<coord>::iterator snakeIterator; //Iterator for snake
 	list<fruit> fruitMarket; //List of fruits currently in use
-	list<fruit>::iterator fruitIterator; //Iterator for fruits
 	
 	int initTime = 0; //Epoch time of start of game (seconds)
 	int curTime = 0; //Current time, measured in seconds with 0 as time game started
@@ -119,19 +117,19 @@ int main()
 			}
 			
 			//Run through fruit and remove any the snake is about to eat or that are about to expire
-			for(fruitIterator=fruitMarket.begin(); fruitIterator != fruitMarket.end(); fruitIterator++)
+			for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
 			{
-				if(predictor == (*fruitIterator).position)
+				if(predictor == (*i).position)
 				{
-					fruitIterator = fruitMarket.erase(fruitIterator);
-					fruitIterator--;
+					i = fruitMarket.erase(i);
+					i--;
 					gotFruit = true;
 				}
 				
-				if((curTime > (*fruitIterator).expiryTime) && ((*fruitIterator).expiryTime != -1))
+				if((curTime > (*i).expiryTime) && ((*i).expiryTime != -1))
 				{
-					fruitIterator = fruitMarket.erase(fruitIterator);
-					fruitIterator--;
+					i = fruitMarket.erase(i);
+					i--;
 				}
 			}
 			
@@ -140,10 +138,10 @@ int main()
 			
 			//Check if snake is about to hit itself
 			//Note: the snake can move into the space currently occupied by the last part of its tail, unless it has just received a fruit.
-			for(snakeIterator=snake.begin();
-			    ((snakeIterator != (--snake.end())) && (!growSnake)) || ((snakeIterator != snake.end()) && growSnake);
-			    snakeIterator++)
-			{ if(predictor == *snakeIterator) gameOver(); }
+			for(deque<coord>::iterator i=snake.begin();
+			    ((i != (--snake.end())) && (!growSnake)) || ((i != snake.end()) && growSnake);
+			    i++)
+			{ if(predictor == *i) gameOver(); }
 			
 			//Move snake
 			if(growSnake != true) snake.pop_back();
@@ -169,14 +167,14 @@ int main()
 		mvprintw(row-1,col-1,"O");
 		
 		//Draw snake!
-		for(snakeIterator=snake.begin(); snakeIterator != snake.end(); snakeIterator++)
+		for(deque<coord>::iterator i=snake.begin(); i != snake.end(); i++)
 		{
-			mvprintw((*snakeIterator).y,(*snakeIterator).x,"*");
+			mvprintw((*i).y,(*i).x,"*");
 		}
 		mvprintw((snake.front()).y,(snake.front()).x,"O");
 		
 		//Draw fruit!
-		for(fruitIterator=fruitMarket.begin(); fruitIterator != fruitMarket.end(); fruitIterator++) mvprintw((*fruitIterator).position.y,(*fruitIterator).position.x,"F");
+		for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"F");
 		
 		//Move pointer back to top left hand corner
 		move(0,0);
@@ -197,7 +195,8 @@ int main()
 
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
 {
-	//Fill this in!
+	//int latestFruitTime = 0;
+	//for(
 	
 	return 0;
 }
