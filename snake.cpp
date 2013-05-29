@@ -1,3 +1,7 @@
+//***************************************************************************//
+//                                  HEADERS                                  //
+//***************************************************************************//
+
 //Platform independent headers
 #include <string.h>
 #include <deque>
@@ -11,6 +15,10 @@
 #include <unistd.h>
 
 using namespace std;
+
+//***************************************************************************//
+//                             CLASS DEFINITIONS                             //
+//***************************************************************************//
 
 //Define a coordinate
 class coord
@@ -53,6 +61,10 @@ class fruit
 	
 };
 
+//***************************************************************************//
+//                          FUNCTION PROTOTYPES                              //
+//***************************************************************************//
+
 int playGame(); //Function to handle the game
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
 void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
@@ -66,7 +78,16 @@ void saveHighScore(); //Function to save a high score to file
 
 void streetCred(); //Function to display credits
 
-//Character string constants
+//***************************************************************************//
+//                           NON-STRING CONSTS                               //
+//***************************************************************************//
+
+const double gameTurnTime = 0.5; //Length of a turn (seconds)
+
+//***************************************************************************//
+//                            STRING CONSTANTS                               //
+//***************************************************************************//
+
 // -main menu
 const char gameName[] = "SNAKE!";
 const char menuOptionPlay[] = "Start game ('p')";
@@ -96,6 +117,10 @@ const char* scoresOptions[] = {scoresTitle,scoresQuit};
 const char creditsTitle[] = "CREDITS";
 const char* creditsText[] = {"PROCRASTINATION","Alex Seaton","","ARCANE MATHS","Si Chen","","GURU","Aviv Beeri","","BUG RESPONSIBILITY","ERROR: Unhandled exception #423987"};
 const char creditsQuit[] = "Return to main menu ('q')";
+
+//***************************************************************************//
+//                                   MAIN()                                  //
+//***************************************************************************//
 
 //main() handles main menu and calls functions to display other screens (e.g. game, submenus etc.)
 int main()
@@ -181,6 +206,10 @@ int main()
 	return 0;
 }
 
+//***************************************************************************//
+//                          FUNCTION DEFINITONS                              //
+//***************************************************************************//
+
 //TODO: Sort out these two functions!
 
 //Checks whether a fruit is ready to be placed
@@ -204,7 +233,7 @@ int playGame()
 	deque<coord> snake; //Position of snake
 	list<fruit> fruitMarket; //List of fruits currently in use
 	
-	time_t initTime = time(NULL); //Epoch time of start of game (seconds)
+	time_t initTime; //Epoch time of start of game (seconds)
 	time_t gameTime = 0; //Current time, measured in seconds with 0 as time game started
 	int ch; //Stores latest character from stdin
 	int row,col; //Size of play area (currently dynamic) TODO: Fix these values in some way
@@ -244,6 +273,8 @@ int playGame()
 		else if(ch == KEY_DOWN) { if(direction != 0) direction=1; }
 		else if(ch == KEY_RIGHT) { if(direction != 3) direction=2; }
 		else if(ch == KEY_LEFT) { if(direction != 2) direction=3; }
+		
+		if(direction == -1) initTime = time(NULL); //Record time to mark start of game (last time this executes will be the start of the game)
 		
 		if(direction != -1) //Only do this stuff if the game has started!
 		{
@@ -352,7 +383,7 @@ int playGame()
 		refresh();
 		
 		//Wait for a second
-		usleep(1*1000000);
+		usleep(gameTurnTime*1000000);
 	}
 }
 
