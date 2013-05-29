@@ -4,6 +4,7 @@
 #include <list>
 #include <cstdlib>
 #include <time.h>
+#include <cmath>
 
 //Platform specific headers :(
 #include <ncurses.h>
@@ -35,29 +36,38 @@ class fruit
 	coord position;
 	time_t initTime;
 	time_t expiryTime; //-1 means infinite
-	int fruitType;
+	int fruitPoints;
 	
-	fruit(int y0,int x0, time_t initTime0, time_t expiryTime0, int fruitType0) : position(y0,x0)
+	fruit(int y0,int x0, time_t initTime0, time_t expiryTime0, int fruitPoints0) : position(y0,x0)
 	{
 		initTime = initTime0;
 		expiryTime = expiryTime0;
-		fruitType = fruitType0;
+		fruitPoints = fruitPoints0;
 	}
-	fruit(coord position0, time_t initTime0, time_t expiryTime0, int fruitType0) : position(position0)
+	fruit(coord position0, time_t initTime0, time_t expiryTime0, int fruitPoints0) : position(position0)
 	{
 		initTime = initTime0;
 		expiryTime = expiryTime0;
-		fruitType = fruitType0;
+		fruitPoints = fruitPoints0;
 	}
 	
 };
 
+int playGame(); //Function to handle the game
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
 void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
-int playGame(); //Function to handle the actual game
 void gameOver(); //Function to display game over screen
 
+void optionsMenu();	//Function to display options menu
+
+void highScores(); //Function to display high scores
+void loadHighScores(); //Function to retrive high scores from file
+void saveHighScore(); //Function to save a high score to file
+
+void streetCred(); //Function to display credits
+
 //Character string constants
+// -main menu
 const char gameName[] = "SNAKE!";
 const char menuOptionPlay[] = "Start game ('p')";
 const char menuOptionOptions[] = "Options ('o')";
@@ -67,7 +77,27 @@ const char menuOptionQuit[] = "Quit ('q')";
 
 const char* menuOptions[] = {menuOptionPlay, menuOptionOptions, menuOptionHighScore, menuOptionCredits, menuOptionQuit};
 
-//main() handles main menu and calls functions to display other screens (e.g. actual game, submenus etc.)
+// -Game
+const char gameOverText[] = "Press 'q' to return to the main menu";
+
+// -Options menu
+const char optionsTitle[] = "OPTIONS";
+const char optionsQuit[] = "Quit ('q')";
+
+const char* optionsOptions[] = {optionsQuit};
+
+// -High scores
+const char scoresTitle[] = "HIGH SCORES";
+const char scoresQuit[] = "Press 'q' to return to the main menu";
+
+const char* scoresOptions[] = {scoresTitle,scoresQuit};
+
+// -Credits
+const char creditsTitle[] = "CREDITS";
+const char* creditsText[] = {"PROCRASTINATION","Alex Seaton","","ARCANE MATHS","Si Chen","","GURU","Aviv Beeri","","BUG RESPONSIBILITY","ERROR: Unhandled exception #423987"};
+const char creditsQuit[] = "Return to main menu ('q')";
+
+//main() handles main menu and calls functions to display other screens (e.g. game, submenus etc.)
 int main()
 {
 	int ch;
@@ -118,9 +148,9 @@ int main()
 			int outcome = playGame();
 			continue;
 		}
-		else if(ch == 'o') { /*Display option menu*/ }
-		else if(ch == 's') { /*Display high scores*/ }
-		else if(ch == 'c') { /*Display credits*/ }
+		else if(ch == 'o') optionsMenu();
+		else if(ch == 's') highScores();
+		else if(ch == 'c') streetCred();
 		else if(ch == 'q') break;
 		else if(ch == KEY_UP)
 		{
@@ -139,9 +169,9 @@ int main()
 				int outcome = playGame();
 				continue;
 			}
-			else if(highlight == 1) { /*Display option menu*/ }
-			else if(highlight == 2) { /*Display high scores*/ }
-			else if(highlight == 3) { /*Display credits*/ }
+			else if(highlight == 1) optionsMenu();
+			else if(highlight == 2) highScores();
+			else if(highlight == 3) streetCred();
 			else if(highlight == 4) break;
 		}
 	}
@@ -183,6 +213,7 @@ int playGame()
 	coord predictor(-1,-1); //Predicted position of snake
 	bool gotFruit = false; //If true, signals that snake will eat a fruit *next* turn
 	bool growSnake = false; //If true, signals that snake has eaten a fruit this turn and should grow
+	int score = 0;
 	
 	//Set character reading to be non-blocking
 	nodelay(stdscr,TRUE);
@@ -197,7 +228,7 @@ int playGame()
 	snake.push_front(coord(row/2-1,col/2));
 	
 	//Add a test fruit!
-	fruitMarket.push_front(fruit(row/2,col/2,gameTime,-1,0));
+	fruitMarket.push_front(fruit(row/2,col/2,gameTime,-1,100));
 	
 	while(true)
 	{
@@ -251,6 +282,7 @@ int playGame()
 				//Remove fruits that are in the path of the snake
 				if(predictor == (*i).position)
 				{
+					score += (*i).fruitPoints;
 					i = fruitMarket.erase(i);
 					i--;
 					gotFruit = true;
@@ -261,7 +293,7 @@ int playGame()
 			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2)
 			{
 				gameOver();
-				return 1;
+				return score;
 			}
 			
 			//Check if snake is about to hit itself
@@ -273,7 +305,7 @@ int playGame()
 				if(predictor == *i)
 				{
 					gameOver();
-					return 1;
+					return score;
 				}
 			}
 			
@@ -309,8 +341,9 @@ int playGame()
 		//Draw fruit!
 		for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"F");
 		
-		//Draw timer
-		mvprintw(0,col/2,"%i",gameTime);
+		//Draw timer and score
+		mvprintw(0,col/4-(strlen("Timer: ")+(int)log10(gameTime+0.1)+1)/2,"Timer: %i",gameTime);
+		mvprintw(0,col-1-col/4-(strlen("Score: ")+(int)log10(score+0.1)+1)/2,"Score: %i",score);
 		
 		//Move cursor back to top left hand corner
 		move(0,0);
@@ -343,7 +376,7 @@ void gameOver()
 	mvprintw(row/2-1,col/2-38,"|          /___\\     /      \\   |___          /     \\  \\    /  |___   |___/");
 	mvprintw(row/2,col/2-38,"|    ___  /     \\   /        \\  |             \\     /   \\  /   |      |   \\ ");
 	mvprintw(row/2+1,col/2-38," \\____/  /       \\ /          \\ |_____         \\___/     \\/    |_____ |    \\ ");
-	mvprintw(row-1,col/2-strlen("Press 'q' to return to menu")/2,"Press 'q' to return to menu");
+	mvprintw(row-1,col/2-strlen(gameOverText)/2,"%s",gameOverText);
 	
 	//Move pointer back to top left hand corner
 	move(0,0);
@@ -353,3 +386,150 @@ void gameOver()
 	
 	while(ch != 'q') ch = getch();
 }
+
+//Function to display options menu
+void optionsMenu()
+{
+	int ch;
+	int row,col; //Size of menu area (currently dynamic)
+	
+	int highlight = 0; //Item highlighted
+	
+	while(true)
+	{
+		//Clear display
+		clear();
+		
+		//Get size of console
+		getmaxyx(stdscr,row,col);
+		
+		//Display main menu
+		mvprintw(row/5,col/2-strlen(optionsTitle)/2,"%s",optionsTitle);
+		mvprintw(row/5+2,col/2-strlen(optionsQuit)/2,"%s",optionsQuit);
+		
+		mvprintw(row/5+2*highlight+2,col/2-strlen(optionsOptions[highlight])/2-2,"*");
+		mvprintw(row/5+2*highlight+2,col/2-strlen(optionsOptions[highlight])/2+strlen(optionsOptions[highlight])+1,"*");
+		
+		//Move cursor to (0,0)
+		move(0,0);
+		
+		//Write all output to console
+		refresh();
+		
+		//Set character input as blocking
+		nodelay(stdscr,FALSE);
+		
+		//Get character from user
+		ch=getch();
+		
+		//Interpret user input
+		if(ch == 'q') break;
+		else if(ch == KEY_UP)
+		{
+			if(highlight == 0) highlight = 0;
+			else highlight--;
+		}
+		else if(ch == KEY_DOWN)
+		{
+			if(highlight == 0) highlight = 0;
+			else highlight++;
+		}
+		else if(ch == '\n')
+		{
+			if(highlight == 0)
+			{
+				break;
+			}
+		}
+	}
+}
+
+//Function to display high scores
+void highScores()
+{
+	int ch;
+	int row,col; //Size of menu area (currently dynamic)
+	
+	while(true)
+	{
+		//Clear display
+		clear();
+		
+		//Get size of console
+		getmaxyx(stdscr,row,col);
+		
+		//Print all high scores text
+		mvprintw(row/5,col/2-strlen(scoresTitle)/2,"%s",scoresTitle);
+		mvprintw(row-1,col/2-strlen(scoresQuit)/2,"%s",scoresQuit);
+		
+		//Move cursor to (0,0)
+		move(0,0);
+		
+		//Write all output to console
+		refresh();
+		
+		//Set character input as blocking
+		nodelay(stdscr,FALSE);
+		
+		//Get character from user
+		ch=getch();
+		
+		//Interpret user input
+		if(ch == 'q') break;
+		else if(ch == KEY_UP)
+		{
+			//Scroll up
+		}
+		else if(ch == KEY_DOWN)
+		{
+			//Scroll down
+		}
+	}
+}
+
+//Function to display credits
+void streetCred()
+{
+	int ch;
+	int row,col; //Size of console
+	
+	while(true)
+	{
+		//Clear display
+		clear();
+		
+		//Get size of console
+		getmaxyx(stdscr,row,col);
+		
+		//Print all credits text
+		mvprintw(row/5,col/2-strlen(creditsTitle)/2,"%s",creditsTitle);
+		mvprintw(row-1,col/2-strlen(creditsQuit)/2,"%s",creditsQuit);
+		
+		for(int i=0; (i<(sizeof(creditsText)/sizeof(const char*))) && (row/5+3+i < row-3); i++)
+		{ mvprintw(row/5+3+i,col/2-strlen(creditsText[i])/2,"%s",creditsText[i]); }
+		
+		//Move cursor to (0,0)
+		move(0,0);
+		
+		//Write all output to console
+		refresh();
+		
+		//Set character input as blocking
+		nodelay(stdscr,FALSE);
+		
+		//Get character from user
+		ch=getch();
+		
+		//Interpret user input
+		if(ch == 'q') break;
+		else if(ch == KEY_UP)
+		{
+			//Scroll up
+		}
+		else if(ch == KEY_DOWN)
+		{
+			//Scroll down
+		}
+	}
+}
+
