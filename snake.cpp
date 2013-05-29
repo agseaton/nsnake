@@ -1,13 +1,17 @@
-#include <ncurses.h>
+//Platform independent headers
 #include <string.h>
 #include <deque>
 #include <list>
 #include <cstdlib>
 #include <time.h>
+
+//Platform specific headers :(
+#include <ncurses.h>
 #include <unistd.h>
 
 using namespace std;
 
+//Define a coordinate
 class coord
 {
 	public:
@@ -24,6 +28,7 @@ class coord
 	}
 };
 
+//Define a fruit
 class fruit
 {
 	public:
@@ -49,8 +54,8 @@ class fruit
 
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
 void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
-int playGame();
-void gameOver();
+int playGame(); //Function to handle the actual game
+void gameOver(); //Function to display game over screen
 
 //Character string constants
 const char gameName[] = "SNAKE!";
@@ -62,6 +67,7 @@ const char menuOptionQuit[] = "Quit ('q')";
 
 const char* menuOptions[] = {menuOptionPlay, menuOptionOptions, menuOptionHighScore, menuOptionCredits, menuOptionQuit};
 
+//main() handles main menu and calls functions to display other screens (e.g. actual game, submenus etc.)
 int main()
 {
 	int ch;
@@ -94,9 +100,11 @@ int main()
 		mvprintw(row/5+2*highlight+2,col/2-strlen(menuOptions[highlight])/2-2,"*");
 		mvprintw(row/5+2*highlight+2,col/2-strlen(menuOptions[highlight])/2+strlen(menuOptions[highlight])+1,"*");
 		
-		refresh();
-		
+		//Move cursor to (0,0)
 		move(0,0);
+		
+		//Write all output to console
+		refresh();
 		
 		//Set character input as blocking
 		nodelay(stdscr,FALSE);
@@ -104,6 +112,7 @@ int main()
 		//Get character from user
 		ch=getch();
 		
+		//Interpret user input
 		if(ch == 'p')
 		{
 			int outcome = playGame();
@@ -142,6 +151,9 @@ int main()
 	return 0;
 }
 
+//TODO: Sort out these two functions!
+
+//Checks whether a fruit is ready to be placed
 bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
 {
 	//Find the time at which the last fruit was placed
@@ -151,10 +163,10 @@ bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
 	return 0;
 }
 
+//Places (i.e. generates coordinates for) a fruit
 void placeFruit(list<fruit> &fruitList)
 {
-	//Create new fruit
-	//Add it to list of fruits
+	//Stuff goes here
 }
 
 int playGame()
@@ -165,18 +177,15 @@ int playGame()
 	time_t initTime = time(NULL); //Epoch time of start of game (seconds)
 	time_t gameTime = 0; //Current time, measured in seconds with 0 as time game started
 	int ch; //Stores latest character from stdin
-	int row,col; //Size of play area (currently dynamic)
+	int row,col; //Size of play area (currently dynamic) TODO: Fix these values in some way
 	
 	int direction=-1; //Direction of motion of snake (-1: uninitialised, 0: up, 1: down, 2: right, 3: left)
 	coord predictor(-1,-1); //Predicted position of snake
-	bool gotFruit = false;
-	bool growSnake = false;
+	bool gotFruit = false; //If true, signals that snake will eat a fruit *next* turn
+	bool growSnake = false; //If true, signals that snake has eaten a fruit this turn and should grow
 	
 	//Set character reading to be non-blocking
 	nodelay(stdscr,TRUE);
-	
-	//Clear virtual window
-	clear();
 	
 	//Get size of window
 	getmaxyx(stdscr,row,col);
@@ -276,7 +285,6 @@ int playGame()
 				
 		//Clear window
 		clear();
-		refresh();
 		
 		//Get size of window
 		getmaxyx(stdscr,row,col);
@@ -307,7 +315,7 @@ int playGame()
 		//Move cursor back to top left hand corner
 		move(0,0);
 		
-		//Draw to console
+		//Copy virtual buffer to console and display everything!
 		refresh();
 		
 		//Wait for a second
@@ -325,7 +333,6 @@ void gameOver()
 	
 	//Clear window
 	clear();
-	refresh();
 	
 	//Get size of window
 	getmaxyx(stdscr,row,col);
