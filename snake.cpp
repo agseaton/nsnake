@@ -24,7 +24,7 @@ using namespace std;
 class coord
 {
 	public:
-	int x,y;
+	int y,x;
 	coord(int y0,int x0)
 	{
 		y=y0;
@@ -66,8 +66,8 @@ class fruit
 //***************************************************************************//
 
 int playGame(); //Function to handle the game
-bool isFruitReady(int gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
-void placeFruit(list<fruit> &fruitList); //Adds a fruit to the list - the fruits get drawn later
+bool isFruitReady(time_t gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
+void placeFruit(time_t gameTime, list<fruit> &fruitMarket, deque<coord> &snake); //Adds a fruit to the list - the fruits get drawn later
 void gameOver(); //Function to display game over screen
 
 void optionsMenu();	//Function to display options menu
@@ -82,7 +82,7 @@ void streetCred(); //Function to display credits
 //                           NON-STRING CONSTS                               //
 //***************************************************************************//
 
-const double gameTurnTime = 0.5; //Length of a turn (seconds)
+const double gameTurnTime = 0.25; //Length of a turn (seconds)
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -213,19 +213,51 @@ int main()
 //TODO: Sort out these two functions!
 
 //Checks whether a fruit is ready to be placed
-bool isFruitReady(int gameTime, list<fruit> &fruitMarket)
+bool isFruitReady(time_t gameTime, list<fruit> &fruitMarket)
 {
-	//Find the time at which the last fruit was placed
-	int latestFruitTime = 0;
-	for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) if(latestFruitTime > (*i).initTime) latestFruitTime = (*i).initTime;
-	
-	return 0;
+	//If no fruits are present then we need a new one.
+	if(fruitMarket.empty()) return 1;
+	else return 0;
 }
 
 //Places (i.e. generates coordinates for) a fruit
-void placeFruit(list<fruit> &fruitList)
+void placeFruit(time_t gameTime, list<fruit> &fruitMarket,deque<coord> &snake)
 {
-	//Stuff goes here
+	//Get size of window
+	int row,col;
+	getmaxyx(stdscr,row,col);
+	coord randomCoord(-1,-1);
+	bool inSomething = true;
+	
+	//Generate coordinates of fruit such that they aren't in the snake or on any other fruit
+	while(inSomething == true)
+	{
+		randomCoord = coord((rand() % (row-3))+2,(rand() % (col-2))+1);
+		
+		for(deque<coord>::iterator i = snake.begin(); i != snake.end(); i++)
+		{
+			if((*i) == randomCoord)
+			{
+				inSomething = true;
+				break;
+			}
+			else inSomething = false;
+		}
+		if(inSomething == true) continue;
+		
+		for(list<fruit>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
+		{
+			if((*i).position == randomCoord)
+			{
+				inSomething = true;
+				break;
+			}
+			else inSomething = false;
+		}
+	}
+	
+	//Create the fruit
+	fruitMarket.push_front(fruit(randomCoord,gameTime,gameTime+30,10));
 }
 
 int playGame()
@@ -290,7 +322,7 @@ int playGame()
 			else if(direction == 3)	predictor.x--;
 			
 			//Sort out fruit related issues
-			if(isFruitReady(gameTime, fruitMarket)) placeFruit(fruitMarket); //If a fruit is ready to be placed, place it!
+			if(isFruitReady(gameTime, fruitMarket)) placeFruit(gameTime, fruitMarket, snake); //If a fruit is ready to be placed, place it!
 			
 			if(gotFruit)
 			{
