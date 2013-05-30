@@ -32,7 +32,12 @@ class coord
 	}
 	bool operator==(coord other)
 	{
-		if (x == other.x && y == other.y) return true;
+		if(x == other.x && y == other.y) return true;
+		else return false;
+	}
+	bool operator!=(coord other)
+	{
+		if(x != other.x || y != other.y) return true;
 		else return false;
 	}
 };
@@ -100,6 +105,10 @@ const char* menuOptions[] = {menuOptionPlay, menuOptionOptions, menuOptionHighSc
 
 // -Game
 const char gameOverText[] = "Press 'q' to return to the main menu";
+const char snakeHeadChar[] = "O";
+const char snakeBodyChar[] = "*";
+const char snakeTailChar[] = "";
+const char fruitChar[] = "F";
 
 // -Options menu
 const char optionsTitle[] = "OPTIONS";
@@ -145,7 +154,9 @@ int main()
 		getmaxyx(stdscr,row,col);
 		
 		//Display main menu
+		attron(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5,col/2-strlen(gameName)/2,"%s",gameName);
+		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5+2,col/2-strlen(menuOptionPlay)/2,"%s",menuOptionPlay);
 		mvprintw(row/5+4,col/2-strlen(menuOptionOptions)/2,"%s",menuOptionOptions);
 		mvprintw(row/5+6,col/2-strlen(menuOptionHighScore)/2,"%s",menuOptionHighScore);
@@ -397,12 +408,13 @@ int playGame()
 		//Draw snake!
 		for(deque<coord>::iterator i=snake.begin(); i != snake.end(); i++)
 		{
-			mvprintw((*i).y,(*i).x,"*");
+			mvprintw((*i).y,(*i).x,"%s",snakeBodyChar);
 		}
-		mvprintw((snake.front()).y,(snake.front()).x,"O");
+		mvprintw((snake.front()).y,(snake.front()).x,"%s",snakeHeadChar);
+		if((snake.front() != snake.back()) && (strcmp(snakeTailChar,"") != 0)) mvprintw((snake.back()).y,(snake.back()).x,"%s",snakeTailChar);
 		
 		//Draw fruit!
-		for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"F");
+		for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar);
 		
 		//Draw timer and score
 		mvprintw(0,col/4-(strlen("Timer: ")+(int)log10(gameTime+0.1)+1)/2,"Timer: %i",gameTime);
@@ -467,7 +479,9 @@ void optionsMenu()
 		getmaxyx(stdscr,row,col);
 		
 		//Display main menu
+		attron(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5,col/2-strlen(optionsTitle)/2,"%s",optionsTitle);
+		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5+2,col/2-strlen(optionsQuit)/2,"%s",optionsQuit);
 		
 		mvprintw(row/5+2*highlight+2,col/2-strlen(optionsOptions[highlight])/2-2,"*");
@@ -522,7 +536,9 @@ void highScores()
 		getmaxyx(stdscr,row,col);
 		
 		//Print all high scores text
+		attron(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5,col/2-strlen(scoresTitle)/2,"%s",scoresTitle);
+		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row-1,col/2-strlen(scoresQuit)/2,"%s",scoresQuit);
 		
 		//Move cursor to (0,0)
@@ -565,7 +581,9 @@ void streetCred()
 		getmaxyx(stdscr,row,col);
 		
 		//Print all credits text
+		attron(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5,col/2-strlen(creditsTitle)/2,"%s",creditsTitle);
+		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row-1,col/2-strlen(creditsQuit)/2,"%s",creditsQuit);
 		
 		for(int i=0; (i<(sizeof(creditsText)/sizeof(const char*))) && (row/5+3+i < row-3); i++)
