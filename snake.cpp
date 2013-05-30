@@ -21,21 +21,21 @@ using namespace std;
 //***************************************************************************//
 
 //Define a coordinate
-class coord
+class coord_t
 {
 	public:
 	int y,x;
-	coord(int y0,int x0)
+	coord_t(int y0,int x0)
 	{
 		y=y0;
 		x=x0;
 	}
-	bool operator==(coord other)
+	bool operator==(coord_t other)
 	{
 		if(x == other.x && y == other.y) return true;
 		else return false;
 	}
-	bool operator!=(coord other)
+	bool operator!=(coord_t other)
 	{
 		if(x != other.x || y != other.y) return true;
 		else return false;
@@ -43,27 +43,59 @@ class coord
 };
 
 //Define a fruit
-class fruit
+class fruit_t
 {
 	public:
-	coord position;
+	coord_t position;
 	time_t initTime;
 	time_t expiryTime; //-1 means infinite
 	int fruitPoints;
 	
-	fruit(int y0,int x0, time_t initTime0, time_t expiryTime0, int fruitPoints0) : position(y0,x0)
+	fruit_t(int y0,int x0, time_t initTime0, time_t expiryTime0, int fruitPoints0) : position(y0,x0)
 	{
 		initTime = initTime0;
 		expiryTime = expiryTime0;
 		fruitPoints = fruitPoints0;
 	}
-	fruit(coord position0, time_t initTime0, time_t expiryTime0, int fruitPoints0) : position(position0)
+	fruit_t(coord_t position0, time_t initTime0, time_t expiryTime0, int fruitPoints0) : position(position0)
 	{
 		initTime = initTime0;
 		expiryTime = expiryTime0;
 		fruitPoints = fruitPoints0;
+	}
+};
+
+//Define a high score
+class highScore_t
+{
+	char* name;
+	int score;
+	
+	public:
+	//Constructors
+	highScore_t()
+	{
+		name = new char[1];
+		name[0] = 0;
+		score = 0;
+	}
+	highScore_t(char* newName,int newScore)
+	{
+		name = new char[strlen(newName)];
+		strcpy(name,newName);
 	}
 	
+	//Setter function
+	void setNameScore(char* newName,int newScore)
+	{
+		delete [] name;
+		name = new char[strlen(newName)];
+		strcpy(name,newName);
+	}
+	
+	//Getter functions
+	int getScore() { return score; }
+	char* getName() { return name; }
 };
 
 //***************************************************************************//
@@ -71,13 +103,13 @@ class fruit
 //***************************************************************************//
 
 int playGame(); //Function to handle the game
-bool isFruitReady(time_t gameTime, list<fruit> &fruitMarket); //Checks whether it is time to produce a fruit
-void placeFruit(time_t gameTime, list<fruit> &fruitMarket, deque<coord> &snake); //Adds a fruit to the list - the fruits get drawn later
+bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket); //Checks whether it is time to produce a fruit
+void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake); //Adds a fruit to the list - the fruits get drawn later
 void gameOver(); //Function to display game over screen
 
 void optionsMenu();	//Function to display options menu
 
-void highScores(); //Function to display high scores
+void highScoresScreen(); //Function to display high scores
 void loadHighScores(); //Function to retrive high scores from file
 void saveHighScore(); //Function to save a high score to file
 
@@ -138,6 +170,8 @@ int main()
 	int row,col; //Size of menu area (currently dynamic)
 	
 	int highlight = 0; //Item highlighted
+	
+	list<highScore_t> highScores;
 
 	//Initialise ncurses
 	initscr();
@@ -185,7 +219,7 @@ int main()
 			continue;
 		}
 		else if(ch == 'o') optionsMenu();
-		else if(ch == 's') highScores();
+		else if(ch == 's') highScoresScreen();
 		else if(ch == 'c') streetCred();
 		else if(ch == 'q') break;
 		else if(ch == KEY_UP)
@@ -206,7 +240,7 @@ int main()
 				continue;
 			}
 			else if(highlight == 1) optionsMenu();
-			else if(highlight == 2) highScores();
+			else if(highlight == 2) highScoresScreen();
 			else if(highlight == 3) streetCred();
 			else if(highlight == 4) break;
 		}
@@ -224,7 +258,7 @@ int main()
 //TODO: Sort out these two functions!
 
 //Checks whether a fruit is ready to be placed
-bool isFruitReady(time_t gameTime, list<fruit> &fruitMarket)
+bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
@@ -232,20 +266,20 @@ bool isFruitReady(time_t gameTime, list<fruit> &fruitMarket)
 }
 
 //Places (i.e. generates coordinates for) a fruit
-void placeFruit(time_t gameTime, list<fruit> &fruitMarket,deque<coord> &snake)
+void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake)
 {
 	//Get size of window
 	int row,col;
 	getmaxyx(stdscr,row,col);
-	coord randomCoord(-1,-1);
+	coord_t randomCoord(-1,-1);
 	bool inSomething = true;
 	
 	//Generate coordinates of fruit such that they aren't in the snake or on any other fruit
 	while(inSomething == true)
 	{
-		randomCoord = coord((rand() % (row-3))+2,(rand() % (col-2))+1);
+		randomCoord = coord_t((rand() % (row-3))+2,(rand() % (col-2))+1);
 		
-		for(deque<coord>::iterator i = snake.begin(); i != snake.end(); i++)
+		for(deque<coord_t>::iterator i = snake.begin(); i != snake.end(); i++)
 		{
 			if((*i) == randomCoord)
 			{
@@ -256,7 +290,7 @@ void placeFruit(time_t gameTime, list<fruit> &fruitMarket,deque<coord> &snake)
 		}
 		if(inSomething == true) continue;
 		
-		for(list<fruit>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
+		for(list<fruit_t>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
 		{
 			if((*i).position == randomCoord)
 			{
@@ -268,13 +302,13 @@ void placeFruit(time_t gameTime, list<fruit> &fruitMarket,deque<coord> &snake)
 	}
 	
 	//Create the fruit
-	fruitMarket.push_front(fruit(randomCoord,gameTime,gameTime+30,10));
+	fruitMarket.push_front(fruit_t(randomCoord,gameTime,gameTime+30,10));
 }
 
 int playGame()
 {
-	deque<coord> snake; //Position of snake
-	list<fruit> fruitMarket; //List of fruits currently in use
+	deque<coord_t> snake; //Position of snake
+	list<fruit_t> fruitMarket; //List of fruits currently in use
 	
 	time_t initTime; //Epoch time of start of game (seconds)
 	time_t gameTime = 0; //Current time, measured in seconds with 0 as time game started
@@ -282,7 +316,7 @@ int playGame()
 	int row,col; //Size of play area (currently dynamic) TODO: Fix these values in some way
 	
 	int direction=-1; //Direction of motion of snake (-1: uninitialised, 0: up, 1: down, 2: right, 3: left)
-	coord predictor(-1,-1); //Predicted position of snake
+	coord_t predictor(-1,-1); //Predicted position of snake
 	bool gotFruit = false; //If true, signals that snake will eat a fruit *next* turn
 	bool growSnake = false; //If true, signals that snake has eaten a fruit this turn and should grow
 	int score = 0;
@@ -294,13 +328,13 @@ int playGame()
 	getmaxyx(stdscr,row,col);
 	
 	//And God created the snake, saying, "Be fruitful and multiply"
-	snake.push_front(coord(row/2,col/2));
-	snake.push_front(coord(row/2,col/2+1));
-	snake.push_front(coord(row/2-1,col/2+1));
-	snake.push_front(coord(row/2-1,col/2));
+	snake.push_front(coord_t(row/2,col/2));
+	snake.push_front(coord_t(row/2,col/2+1));
+	snake.push_front(coord_t(row/2-1,col/2+1));
+	snake.push_front(coord_t(row/2-1,col/2));
 	
 	//Add a test fruit!
-	fruitMarket.push_front(fruit(row/2,col/2,gameTime,-1,100));
+	fruitMarket.push_front(fruit_t(row/2,col/2,gameTime,-1,100));
 	
 	while(true)
 	{
@@ -342,7 +376,7 @@ int playGame()
 			}
 			
 			//Run through fruit and remove any the snake is about to eat or that are about to expire
-			for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
+			for(list<fruit_t>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
 			{
 				//Warning: Iterator after an item is removed may not be valid!
 				//Remove expiring fruit
@@ -372,7 +406,7 @@ int playGame()
 			
 			//Check if snake is about to hit itself
 			//Note: the snake can move into the space currently occupied by the last part of its tail, unless it has just received a fruit.
-			for(deque<coord>::iterator i=snake.begin();
+			for(deque<coord_t>::iterator i=snake.begin();
 			    ((i != (--snake.end())) && (!growSnake)) || ((i != snake.end()) && growSnake);
 			    i++)
 			{
@@ -406,7 +440,7 @@ int playGame()
 		mvprintw(row-1,col-1,"O");
 		
 		//Draw snake!
-		for(deque<coord>::iterator i=snake.begin(); i != snake.end(); i++)
+		for(deque<coord_t>::iterator i=snake.begin(); i != snake.end(); i++)
 		{
 			mvprintw((*i).y,(*i).x,"%s",snakeBodyChar);
 		}
@@ -414,7 +448,7 @@ int playGame()
 		if((snake.front() != snake.back()) && (strcmp(snakeTailChar,"") != 0)) mvprintw((snake.back()).y,(snake.back()).x,"%s",snakeTailChar);
 		
 		//Draw fruit!
-		for(list<fruit>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar);
+		for(list<fruit_t>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar);
 		
 		//Draw timer and score
 		mvprintw(0,col/4-(strlen("Timer: ")+(int)log10(gameTime+0.1)+1)/2,"Timer: %i",gameTime);
@@ -522,7 +556,7 @@ void optionsMenu()
 }
 
 //Function to display high scores
-void highScores()
+void highScoresScreen()
 {
 	int ch;
 	int row,col; //Size of menu area (currently dynamic)
