@@ -120,6 +120,7 @@ void streetCred(); //Function to display credits
 //***************************************************************************//
 
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
+const double endWaitTime = 1.5; //Length of time to show players their demise
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -469,6 +470,9 @@ void gameOver()
 {
 	int row, col;
 	char ch;
+	
+	//Wait a little to show players their demise
+	usleep(endWaitTime*1000000);
 	
 	//Set character reading to be blocking
 	nodelay(stdscr,FALSE);
