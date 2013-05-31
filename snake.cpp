@@ -3,12 +3,14 @@
 //***************************************************************************//
 
 //Platform independent headers
-#include <string.h>
+#include <cstring>
 #include <deque>
 #include <list>
 #include <cstdlib>
 #include <time.h>
 #include <cmath>
+#include <fstream>
+#include <string>
 
 //Platform specific headers :(
 #include <ncurses.h>
@@ -81,16 +83,18 @@ class highScore_t
 	}
 	highScore_t(char* newName,int newScore)
 	{
-		name = new char[strlen(newName)];
+		name = new char[strlen(newName)+1];
 		strcpy(name,newName);
+		score = newScore;
 	}
 	
 	//Setter function
 	void setNameScore(char* newName,int newScore)
 	{
 		delete [] name;
-		name = new char[strlen(newName)];
+		name = new char[strlen(newName)+1];
 		strcpy(name,newName);
+		score = newScore;
 	}
 	
 	//Getter functions
@@ -102,16 +106,16 @@ class highScore_t
 //                          FUNCTION PROTOTYPES                              //
 //***************************************************************************//
 
-int playGame(); //Function to handle the game
+void playGame(list<highScore_t> &highScores); //Function to handle the game
 bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket); //Checks whether it is time to produce a fruit
 void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake); //Adds a fruit to the list - the fruits get drawn later
-void gameOver(); //Function to display game over screen
+void gameOver(int score, list<highScore_t> &highScores); //Function to display game over screen
 
 void optionsMenu();	//Function to display options menu
 
-void highScoresScreen(); //Function to display high scores
-void loadHighScores(); //Function to retrive high scores from file
-void saveHighScore(); //Function to save a high score to file
+void highScoresScreen(list<highScore_t> &highScores); //Function to display high scores
+int loadHighScores(list<highScore_t> &highScores); //Function to retrive high scores from file
+int saveHighScores(list<highScore_t> &highScores); //Function to save a high score to file
 
 void streetCred(); //Function to display credits
 
@@ -152,6 +156,7 @@ const char* optionsOptions[] = {optionsQuit};
 // -High scores
 const char scoresTitle[] = "HIGH SCORES";
 const char scoresQuit[] = "Press 'q' to return to the main menu";
+const char scoresFile[] = "~/.snakeHighScores";
 
 const char* scoresOptions[] = {scoresTitle,scoresQuit};
 
@@ -172,7 +177,9 @@ int main()
 	
 	int highlight = 0; //Item highlighted
 	
+	//Create container to store high scores, and load them from a file
 	list<highScore_t> highScores;
+	loadHighScores(highScores);
 
 	//Initialise ncurses
 	initscr();
@@ -216,11 +223,11 @@ int main()
 		//Interpret user input
 		if(ch == 'p')
 		{
-			int outcome = playGame();
+			playGame(highScores);
 			continue;
 		}
 		else if(ch == 'o') optionsMenu();
-		else if(ch == 's') highScoresScreen();
+		else if(ch == 's') highScoresScreen(highScores);
 		else if(ch == 'c') streetCred();
 		else if(ch == 'q') break;
 		else if(ch == KEY_UP)
@@ -237,11 +244,11 @@ int main()
 		{
 			if(highlight == 0)
 			{
-				int outcome = playGame();
+				playGame(highScores);
 				continue;
 			}
 			else if(highlight == 1) optionsMenu();
-			else if(highlight == 2) highScoresScreen();
+			else if(highlight == 2) highScoresScreen(highScores);
 			else if(highlight == 3) streetCred();
 			else if(highlight == 4) break;
 		}
@@ -306,7 +313,7 @@ void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snak
 	fruitMarket.push_front(fruit_t(randomCoord,gameTime,gameTime+30,10));
 }
 
-int playGame()
+void playGame(list<highScore_t> &highScores)
 {
 	deque<coord_t> snake; //Position of snake
 	list<fruit_t> fruitMarket; //List of fruits currently in use
@@ -346,7 +353,7 @@ int playGame()
 		while(getch() != ERR);
 		
 		//Interpret user input
-		if(ch == 'q') return 0;
+		if(ch == 'q') return;
 		else if(ch == KEY_UP) { if(direction != 1) direction=0; }
 		else if(ch == KEY_DOWN) { if(direction != 0) direction=1; }
 		else if(ch == KEY_RIGHT) { if(direction != 3) direction=2; }
@@ -401,8 +408,8 @@ int playGame()
 			//Check if snake is about to hit a wall
 			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2)
 			{
-				gameOver();
-				return score;
+				gameOver(score, highScores);
+				return;
 			}
 			
 			//Check if snake is about to hit itself
@@ -413,8 +420,8 @@ int playGame()
 			{
 				if(predictor == *i)
 				{
-					gameOver();
-					return score;
+					gameOver(score, highScores);
+					return;
 				}
 			}
 			
@@ -466,10 +473,10 @@ int playGame()
 	}
 }
 
-void gameOver()
+void gameOver(int score,list<highScore_t> &highScores)
 {
 	int row, col;
-	char ch;
+	char ch = 0;
 	
 	//Wait a little to show players their demise
 	usleep(endWaitTime*1000000);
@@ -490,6 +497,24 @@ void gameOver()
 	mvprintw(row/2,col/2-38,"|    ___  /     \\   /        \\  |             \\     /   \\  /   |      |   \\ ");
 	mvprintw(row/2+1,col/2-38," \\____/  /       \\ /          \\ |_____         \\___/     \\/    |_____ |    \\ ");
 	mvprintw(row-1,col/2-strlen(gameOverText)/2,"%s",gameOverText);
+	
+	mvprintw(row/2+4,col/2-strlen("Congratulations! High score!")/2,"Contratulations! High Score!");
+	mvprintw(row/2+5,col/2-strlen("Please enter your name: ")/2,"Please enter your name: ");
+	
+	raw();
+	keypad(stdscr,TRUE);
+	
+	string name = "";
+	while(ch != '\n')
+	{
+		ch = getch();
+		if(ch == '\a') name.erase(--name.end());
+		else name += ch;
+		for(int i=0; i<name.length()+2; i++) mvprintw(row/2+6,col/2-(name.length()+1)/2-1+i," ");
+		mvprintw(row/2+6,col/2-(name.length()+1)/2,"%s",name.c_str());
+		
+		refresh();
+	}
 	
 	//Move pointer back to top left hand corner
 	move(0,0);
@@ -559,8 +584,8 @@ void optionsMenu()
 	}
 }
 
-//Function to display high scores
-void highScoresScreen()
+//Function to display high scores list
+void highScoresScreen(list<highScore_t> &highScores)
 {
 	int ch;
 	int row,col; //Size of menu area (currently dynamic)
@@ -602,6 +627,98 @@ void highScoresScreen()
 			//Scroll down
 		}
 	}
+}
+
+//Function to retrive high scores from file (appends them to list of high scores given)
+int loadHighScores(list<highScore_t> &highScores)
+{
+	ifstream inputStream;
+	
+	//Check input file correctly opened
+	inputStream.open(scoresFile, ios::in);
+	if(inputStream.is_open() == false) return 1;
+	
+	char ch; //Holds last char read from stream
+	char* currentLine = NULL; //Line we're currently working on
+	char* tempName = NULL; //Name extracted from current line
+	int tempScore; //Score extracted from current line
+	streampos lineStart; //Position of start of line
+	streampos lineEnd; //EOL
+	
+	while(inputStream.peek() != EOF)
+	{
+		//Remove all newline characters before proceeding
+		while(inputStream.peek() == '\n') inputStream.get(ch);
+		
+		//Find start and end of line
+		lineStart = inputStream.tellg();
+		do{ inputStream.get(ch); } while(ch != '\n');
+		lineEnd = inputStream.tellg();
+		
+		//Return to start of line
+		inputStream.seekg(lineStart);
+		
+		//Create new char string to store line
+		currentLine = new char[lineEnd-lineStart];
+		
+		//Read the line
+		inputStream.getline(currentLine,lineEnd-lineStart);
+		
+		//Find position of delimiter (',') in line and attempt to parse the name and score
+		//Expected format: <name>,<score>
+		for(int i=0; i<strlen(currentLine); i++)
+		{			
+			if(currentLine[i] == ',')
+			{
+				tempName = new char[i+1];
+				strncpy(tempName,currentLine,i);
+				tempName[i] = 0;
+				
+				//Check for and discard empty strings
+				if(strcmp(tempName,"") == 0) break;
+				
+				bool isWhiteSpace = true;
+				for(int j=0; j<strlen(tempName); j++) if(tempName[j] != ' ') isWhiteSpace = false;
+				
+				if(isWhiteSpace == true) break;
+				
+				//Record score
+				tempScore = atoi(currentLine+i+1);
+				
+				highScores.push_back(highScore_t(tempName,tempScore));
+				break;
+			}
+		}
+		
+		//Free memory
+		if(currentLine != NULL)	delete [] currentLine;
+		if(tempName != NULL) delete [] tempName;
+		
+		currentLine = NULL;
+		tempName = NULL;
+	}
+	
+	//Close file
+	inputStream.close();
+
+	return 0;
+}
+
+//Function to save high scores to file
+int saveHighScores(list<highScore_t> &highScores)
+{
+	ofstream outputStream;
+	
+	//Check output file correctly opened
+	outputStream.open(scoresFile, ios::out | ios::trunc);
+	if(outputStream.is_open() == false) return 1;
+	
+	for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
+	{
+		outputStream << (*i).getName() << "," << (*i).getScore() << endl;
+	}
+	
+	return 0;
 }
 
 //Function to display credits
@@ -651,4 +768,3 @@ void streetCred()
 		}
 	}
 }
-
