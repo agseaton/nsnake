@@ -107,8 +107,8 @@ class highScore_t
 //***************************************************************************//
 
 void playGame(list<highScore_t> &highScores); //Function to handle the game
-bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket); //Checks whether it is time to produce a fruit
-void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake); //Adds a fruit to the list - the fruits get drawn later
+bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest); //Checks whether it is time to produce a fruit
+void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake, int youngest); //Adds a fruit to the list - the fruits get drawn later
 void gameOver(int score, list<highScore_t> &highScores); //Function to display game over screen
 
 void optionsMenu();	//Function to display options menu
@@ -129,7 +129,6 @@ const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
 const int maxNumHighScores = 10; // Maximum number of high scores allowed
 double rate = 1.0/10; //rate at which fruits will be generated (in units of /second)
-int youngest = 0; //age of the youngest fruit generated
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -191,6 +190,9 @@ int main()
 	raw();
 	keypad(stdscr,TRUE);
 	noecho();
+	
+	//Initialise random seed
+	srand(time(NULL));
 	
 	while(true)
 	{
@@ -271,22 +273,21 @@ int main()
 //TODO: Sort out these two functions!
 
 //Checks whether a fruit is ready to be placed
-bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
+bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
-	//Find out whether a new fruit has been generated since the last time youngest was re-set
-	int youngest_previous = youngest;
+	//if all fruits are younger than the current time of the game, make a new one
 	for(list<fruit_t>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
 	{
 		if((*i).initTime > youngest) youngest = (*i).initTime;
 	}
-	if (youngest_previous != youngest) return 1; //if a new fruit has just been created, create another one.
+	if (youngest <= gameTime) return 1;
 	else return 0;
 }
 
 //Places (i.e. generates coordinates for) a fruit
-void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake)
+void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake, int youngest)
 {
 	//Get size of window
 	int row,col;
@@ -322,7 +323,10 @@ void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snak
 	}
 	
 	//Create the fruit
-	int creation_time = youngest + int(exponential(rate)); //time at which next fruit will be created
+	int creation_time;
+	do {
+		creation_time = youngest + int(exponential(rate));
+	} while (creation_time <= gameTime); //generate next birthday of fruit; make sure it is in the future
 	fruitMarket.push_front(fruit_t(randomCoord,creation_time,creation_time+30,10));//put new fruit on market
 }
 
@@ -341,6 +345,7 @@ void playGame(list<highScore_t> &highScores)
 	bool gotFruit = false; //If true, signals that snake will eat a fruit *next* turn
 	bool growSnake = false; //If true, signals that snake has eaten a fruit this turn and should grow
 	int score = 0;
+	int youngest = 0; //age of youngest fruit
 	
 	//Set character reading to be non-blocking
 	nodelay(stdscr,TRUE);
@@ -388,7 +393,7 @@ void playGame(list<highScore_t> &highScores)
 			else if(direction == 3)	predictor.x--;
 			
 			//Sort out fruit related issues
-			if(isFruitReady(gameTime, fruitMarket)) placeFruit(gameTime, fruitMarket, snake); //If a fruit is ready to be placed, place it!
+			if(isFruitReady(gameTime, fruitMarket,youngest)) placeFruit(gameTime, fruitMarket, snake,youngest); //If a fruit is ready to be placed, place it!
 			
 			if(gotFruit)
 			{
@@ -878,6 +883,6 @@ double exponential(double rate)// function generating an exponential distributio
 	double x;
 	do{
 		x= -1.0*log(1.0*rand()/RAND_MAX)/rate;
-	} while ((x<=5) || (x>=30));
+	} while ((x<=5) || (x>=30)); //wating time between fruits must be between 5 to 30 seconds
 	return x;
 }
