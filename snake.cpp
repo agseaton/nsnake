@@ -119,12 +119,16 @@ int saveHighScores(list<highScore_t> &highScores); //Function to save a high sco
 
 void streetCred(); //Function to display credits
 
+double exponential(double rate); //Function to generate an exponential distribution
+
 //***************************************************************************//
 //                           NON-STRING CONSTS                               //
 //***************************************************************************//
 
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
+double rate = 1.0/10; //rate at which fruits will be generated (in units of half-seconds)
+int youngest = 0.0;
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -270,6 +274,12 @@ bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
+	int youngest_previous = youngest;
+	for(list<fruit_t>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
+	{
+		if((*i).initTime > youngest) youngest = (*i).initTime;
+	}
+	if (youngest_previous != youngest) return 1; //if a new fruit has just been created, create another one.
 	else return 0;
 }
 
@@ -310,7 +320,8 @@ void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snak
 	}
 	
 	//Create the fruit
-	fruitMarket.push_front(fruit_t(randomCoord,gameTime,gameTime+30,10));
+	int creation_time = youngest + int(exponential(rate)); //time at which next fruit will be created
+	fruitMarket.push_front(fruit_t(randomCoord,creation_time,creation_time+30,10));//put new fruit on market
 }
 
 void playGame(list<highScore_t> &highScores)
@@ -456,7 +467,16 @@ void playGame(list<highScore_t> &highScores)
 		if((snake.front() != snake.back()) && (strcmp(snakeTailChar,"") != 0)) mvprintw((snake.back()).y,(snake.back()).x,"%s",snakeTailChar);
 		
 		//Draw fruit!
-		for(list<fruit_t>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++) mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar);
+		for(list<fruit_t>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
+		{
+			for(deque<coord_t>::iterator j = snake.begin(); j != snake.end(); j++)
+			{
+				if( ((*i).position != (*j)) && (*i).initTime <= gameTime)
+				{
+					mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar); //if the fruit's creation time is now or in the past draw it
+				}
+			}
+		}
 		
 		//Draw timer and score
 		mvprintw(0,col/4-(strlen("Timer: ")+(int)log10(gameTime+0.1)+1)/2,"Timer: %i",gameTime);
@@ -767,4 +787,13 @@ void streetCred()
 			//Scroll down
 		}
 	}
+}
+
+double exponential(double rate)// function generating an exponential distribution
+{
+	double x;
+	do{
+		x= -1.0*log(1.0*rand()/RAND_MAX)/rate;
+	} while ((x<=5) || (x>=30));
+	return x;
 }
