@@ -107,8 +107,8 @@ class highScore_t
 //***************************************************************************//
 
 void playGame(list<highScore_t> &highScores); //Function to handle the game
-bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket); //Checks whether it is time to produce a fruit
-void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake); //Adds a fruit to the list - the fruits get drawn later
+bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest); //Checks whether it is time to produce a fruit
+void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake, int youngest); //Adds a fruit to the list - the fruits get drawn later
 void gameOver(int score, list<highScore_t> &highScores); //Function to display game over screen
 
 void optionsMenu();	//Function to display options menu
@@ -128,7 +128,6 @@ double exponential(double rate); //Function to generate an exponential distribut
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
 double rate = 1.0/10; //rate at which fruits will be generated (in units of /second)
-int youngest = 0;
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -273,7 +272,7 @@ int main()
 //TODO: Sort out these two functions!
 
 //Checks whether a fruit is ready to be placed
-bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
+bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
@@ -287,7 +286,7 @@ bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
 }
 
 //Places (i.e. generates coordinates for) a fruit
-void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake)
+void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake, int youngest)
 {
 	//Get size of window
 	int row,col;
@@ -345,6 +344,7 @@ void playGame(list<highScore_t> &highScores)
 	bool gotFruit = false; //If true, signals that snake will eat a fruit *next* turn
 	bool growSnake = false; //If true, signals that snake has eaten a fruit this turn and should grow
 	int score = 0;
+	int youngest = 0; //age of youngest fruit
 	
 	//Set character reading to be non-blocking
 	nodelay(stdscr,TRUE);
@@ -392,7 +392,7 @@ void playGame(list<highScore_t> &highScores)
 			else if(direction == 3)	predictor.x--;
 			
 			//Sort out fruit related issues
-			if(isFruitReady(gameTime, fruitMarket)) placeFruit(gameTime, fruitMarket, snake); //If a fruit is ready to be placed, place it!
+			if(isFruitReady(gameTime, fruitMarket,youngest)) placeFruit(gameTime, fruitMarket, snake,youngest); //If a fruit is ready to be placed, place it!
 			
 			if(gotFruit)
 			{
