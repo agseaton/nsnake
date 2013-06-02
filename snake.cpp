@@ -127,8 +127,8 @@ double exponential(double rate); //Function to generate an exponential distribut
 
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
-double rate = 1.0/10; //rate at which fruits will be generated (in units of half-seconds)
-int youngest = 0.0;
+double rate = 1.0/10; //rate at which fruits will be generated (in units of /second)
+int youngest = 0; //age of the youngest fruit generated
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -274,6 +274,7 @@ bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
+	//Find out whether a new fruit has been generated since the last time youngest was re-set
 	int youngest_previous = youngest;
 	for(list<fruit_t>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
 	{
@@ -473,7 +474,7 @@ void playGame(list<highScore_t> &highScores)
 			{
 				if( ((*i).position != (*j)) && (*i).initTime <= gameTime)
 				{
-					mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar); //if the fruit's creation time is now or in the past draw it
+					mvprintw((*i).position.y,(*i).position.x,"%s",fruitChar); //if the fruit's creation time is now or in the past, and its position does not conflict with the snake's, draw it
 				}
 			}
 		}
