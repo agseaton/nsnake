@@ -81,7 +81,7 @@ class highScore_t
 		name[0] = 0;
 		score = 0;
 	}
-	highScore_t(char* newName,int newScore)
+	highScore_t(const char* newName,int newScore)
 	{
 		name = new char[strlen(newName)+1];
 		strcpy(name,newName);
@@ -89,7 +89,7 @@ class highScore_t
 	}
 	
 	//Setter function
-	void setNameScore(char* newName,int newScore)
+	void setNameScore(const char* newName,int newScore)
 	{
 		delete [] name;
 		name = new char[strlen(newName)+1];
@@ -127,6 +127,7 @@ double exponential(double rate); //Function to generate an exponential distribut
 
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
+const int maxNumHighScores = 10; // Maximum number of high scores allowed
 double rate = 1.0/10; //rate at which fruits will be generated (in units of /second)
 int youngest = 0; //age of the youngest fruit generated
 
@@ -160,7 +161,7 @@ const char* optionsOptions[] = {optionsQuit};
 // -High scores
 const char scoresTitle[] = "HIGH SCORES";
 const char scoresQuit[] = "Press 'q' to return to the main menu";
-const char scoresFile[] = "~/.snakeHighScores";
+const char scoresFile[] = "./.snakeHighScores";
 
 const char* scoresOptions[] = {scoresTitle,scoresQuit};
 
@@ -222,7 +223,7 @@ int main()
 		nodelay(stdscr,FALSE);
 		
 		//Get character from user
-		ch=getch();
+		ch=wgetch(stdscr);
 		
 		//Interpret user input
 		if(ch == 'p')
@@ -359,10 +360,10 @@ void playGame(list<highScore_t> &highScores)
 	while(true)
 	{
 		//Read character from input buffer
-		ch=getch();
+		ch=wgetch(stdscr);
 		
 		//Clear the rest of the buffer
-		while(getch() != ERR);
+		while(wgetch(stdscr) != ERR);
 		
 		//Interpret user input
 		if(ch == 'q') return;
@@ -497,7 +498,20 @@ void playGame(list<highScore_t> &highScores)
 void gameOver(int score,list<highScore_t> &highScores)
 {
 	int row, col;
-	char ch = 0;
+	int ch = 0;
+	bool isHighScore = false;
+	
+	//Do we have a high score?
+	if(highScores.empty() && (score != 0)) isHighScore = true; //Yes, if you're the first to get a non-zero score. Impressive.
+	else for(list<highScore_t>::iterator i=highScores.begin(); i != highScores.end(); i++)
+	{
+		if((*i).getScore() < score)
+		{
+			isHighScore = true;
+			break;
+		}
+		else isHighScore = false;
+	}
 	
 	//Wait a little to show players their demise
 	usleep(endWaitTime*1000000);
@@ -517,25 +531,66 @@ void gameOver(int score,list<highScore_t> &highScores)
 	mvprintw(row/2-1,col/2-38,"|          /___\\     /      \\   |___          /     \\  \\    /  |___   |___/");
 	mvprintw(row/2,col/2-38,"|    ___  /     \\   /        \\  |             \\     /   \\  /   |      |   \\ ");
 	mvprintw(row/2+1,col/2-38," \\____/  /       \\ /          \\ |_____         \\___/     \\/    |_____ |    \\ ");
-	mvprintw(row-1,col/2-strlen(gameOverText)/2,"%s",gameOverText);
 	
-	mvprintw(row/2+4,col/2-strlen("Congratulations! High score!")/2,"Contratulations! High Score!");
-	mvprintw(row/2+5,col/2-strlen("Please enter your name: ")/2,"Please enter your name: ");
-	
-	raw();
-	keypad(stdscr,TRUE);
-	
-	string name = "";
-	while(ch != '\n')
+	if(isHighScore)
 	{
-		ch = getch();
-		if(ch == '\a') name.erase(--name.end());
-		else name += ch;
-		for(int i=0; i<name.length()+2; i++) mvprintw(row/2+6,col/2-(name.length()+1)/2-1+i," ");
-		mvprintw(row/2+6,col/2-(name.length()+1)/2,"%s",name.c_str());
+		mvprintw(row/2+4,col/2-strlen("Congratulations! High score!")/2,"Contratulations! High Score!");
+		mvprintw(row/2+5,col/2-strlen("Please enter your name: ")/2,"Please enter your name: ");
+		move(row/2+6,col/2);
+	
+		string name = "";
+		while(true)
+		{
+			ch = wgetch(stdscr); //Read character
 		
-		refresh();
+			//Interpret it correctly	
+			if(ch == KEY_BACKSPACE) { if(name.length() > 0) name.erase(--name.end()); }
+			else if(ch == '\n')
+			{
+				refresh();
+				break;
+			}
+			else if((ch == ' ') && (name.length() == 0)) { /*Do nothing - I'm onto you*/ }
+			else if((ch >= KEY_MIN) && (ch <= KEY_MAX)) { ch = 0; }
+			else name += ch;
+		
+			for(int i=0; i<name.length()+2; i++) mvprintw(row/2+6,col/2-(name.length()+1)/2-1+i," ");
+			mvprintw(row/2+6,col/2-(name.length()+1)/2,"%s",name.c_str());
+		
+			refresh();
+		}
+	
+		//Remove trailing space characters
+		for(string::iterator i=(--name.end()); i != name.begin(); i--)
+		{
+			if((*i) == ' ') i = name.erase(i);
+			else break;
+		}
+		
+		//Record the score in our list of high scores
+		highScores.push_front(highScore_t(name.c_str(),score));
+		
+		//Remove a high score from the list if there are too many
+		while(highScores.size() > maxNumHighScores)
+		{
+			int lowestScore = score;
+			list<highScore_t>::iterator terminator = highScores.end();
+			for(list<highScore_t>::iterator i=highScores.begin(); i != highScores.end(); i++)
+			{
+				if(lowestScore > (*i).getScore())
+				{
+					lowestScore = (*i).getScore();
+					terminator = i;
+				}
+			}
+			if(terminator != highScores.end()) highScores.erase(terminator);
+		}
+		
+		//Save the high scores to a file
+		if(saveHighScores(highScores) == 1) mvprintw(row-2,col/2-strlen("ERROR: Couldn't save to file")/2,"ERROR: Couldn't save to file");
 	}
+	
+	mvprintw(row-1,col/2-strlen(gameOverText)/2,"%s",gameOverText);
 	
 	//Move pointer back to top left hand corner
 	move(0,0);
@@ -543,7 +598,7 @@ void gameOver(int score,list<highScore_t> &highScores)
 	//Draw to console
 	refresh();
 	
-	while(ch != 'q') ch = getch();
+	while(ch != 'q') ch = wgetch(stdscr);
 }
 
 //Function to display options menu
@@ -581,7 +636,7 @@ void optionsMenu()
 		nodelay(stdscr,FALSE);
 		
 		//Get character from user
-		ch=getch();
+		ch=wgetch(stdscr);
 		
 		//Interpret user input
 		if(ch == 'q') break;
@@ -619,11 +674,39 @@ void highScoresScreen(list<highScore_t> &highScores)
 		//Get size of console
 		getmaxyx(stdscr,row,col);
 		
-		//Print all high scores text
+		//Print title and quit text
 		attron(A_UNDERLINE | A_BOLD);
 		mvprintw(row/5,col/2-strlen(scoresTitle)/2,"%s",scoresTitle);
 		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row-1,col/2-strlen(scoresQuit)/2,"%s",scoresQuit);
+		
+		//Print the high scores
+		int previousScore = 0;
+		for(list<highScore_t>::iterator i=highScores.begin(); i != highScores.end(); i++)
+		{
+			//Get the highest score
+			if((*i).getScore() > previousScore) previousScore = (*i).getScore();
+		}
+		
+		int nextScore = 0;
+		list<list<highScore_t>::iterator> iteratorList;
+		for(int i = 0; i< highScores.size(); i++)
+		{
+			//Erase everything from iterator list
+			iteratorList.erase(iteratorList.begin(),iteratorList.end());
+			
+			//Find the next highest score
+			for(list<highScore_t>::iterator j=highScores.begin(); j != highScores.end(); j++)
+			{
+				//if((*j).getScore() < highestScore && ((*j).getScore()
+			}
+			
+			//Find all items with next highest score
+			
+			//Order them alphabetically
+			
+			//Print them to the screen
+		}
 		
 		//Move cursor to (0,0)
 		move(0,0);
@@ -635,7 +718,7 @@ void highScoresScreen(list<highScore_t> &highScores)
 		nodelay(stdscr,FALSE);
 		
 		//Get character from user
-		ch=getch();
+		ch=wgetch(stdscr);
 		
 		//Interpret user input
 		if(ch == 'q') break;
@@ -775,7 +858,7 @@ void streetCred()
 		nodelay(stdscr,FALSE);
 		
 		//Get character from user
-		ch=getch();
+		ch=wgetch(stdscr);
 		
 		//Interpret user input
 		if(ch == 'q') break;
