@@ -191,6 +191,9 @@ int main()
 	keypad(stdscr,TRUE);
 	noecho();
 	
+	//Initialise random seed
+	srand(time(NULL));
+	
 	while(true)
 	{
 		//Clear display
@@ -274,12 +277,12 @@ bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
-	//Find out whether a new fruit has been generated since the last time youngest was re-set
+	//if all fruits are younger than the current time of the game, make a new one
 	for(list<fruit_t>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
 	{
 		if((*i).initTime > youngest) youngest = (*i).initTime;
 	}
-	if (youngest <= gameTime) return 1; //if all fruits are younger than the current time of the game, make a new one
+	if (youngest <= gameTime) return 1;
 	else return 0;
 }
 
@@ -797,6 +800,6 @@ double exponential(double rate)// function generating an exponential distributio
 	double x;
 	do{
 		x= -1.0*log(1.0*rand()/RAND_MAX)/rate;
-	} while ((x<=5) || (x>=30));
+	} while ((x<=5) || (x>=30)); //wating time between fruits must be between 5 to 30 seconds
 	return x;
 }
