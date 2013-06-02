@@ -128,7 +128,7 @@ double exponential(double rate); //Function to generate an exponential distribut
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
 double rate = 1.0/10; //rate at which fruits will be generated (in units of /second)
-int youngest = 0; //age of the youngest fruit generated
+int youngest = 0;
 
 //***************************************************************************//
 //                            STRING CONSTANTS                               //
@@ -275,12 +275,11 @@ bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket)
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
 	//Find out whether a new fruit has been generated since the last time youngest was re-set
-	int youngest_previous = youngest;
 	for(list<fruit_t>::iterator i = fruitMarket.begin(); i != fruitMarket.end(); i++)
 	{
 		if((*i).initTime > youngest) youngest = (*i).initTime;
 	}
-	if (youngest_previous != youngest) return 1; //if a new fruit has just been created, create another one.
+	if (youngest <= gameTime) return 1; //if all fruits are younger than the current time of the game, make a new one
 	else return 0;
 }
 
@@ -321,7 +320,10 @@ void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snak
 	}
 	
 	//Create the fruit
-	int creation_time = youngest + int(exponential(rate)); //time at which next fruit will be created
+	int creation_time;
+	do {
+		creation_time = youngest + int(exponential(rate));
+	} while (creation_time <= gameTime); //generate next birthday of fruit; make sure it is in the future
 	fruitMarket.push_front(fruit_t(randomCoord,creation_time,creation_time+30,10));//put new fruit on market
 }
 
