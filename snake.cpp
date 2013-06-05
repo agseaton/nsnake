@@ -572,24 +572,35 @@ void gameOver(int score,list<highScore_t> &highScores)
 			else break;
 		}
 		
-		//Record the score in our list of high scores
-		highScores.push_front(highScore_t(name.c_str(),score));
+		//Record the score in our list of high scores, preserving ordering
+		if(highScores.empty()) highScores.push_front(highScore_t(name.c_str(),score));
+		else for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
+		{
+			if(score > (*i).getScore())
+			{
+				highScores.insert(i,highScore_t(name.c_str(),score));
+				break;
+			}
+			else if(score == (*i).getScore()) //Compare Names
+			{
+				if(strcmp(name.c_str(),(*i).getName()) < 0)
+				{
+					highScores.insert(i,highScore_t(name.c_str(),score));
+					break;
+				}
+				else if(strcmp(name.c_str(),(*i).getName()) == 0) break; //If name AND score is the same then ignore this score to prevent it being inserted multiple times
+			}
+			
+			//If we're about to get to the end and haven't found a place for the high score, place it at the end
+			if(i == --highScores.end())
+			{
+				highScores.insert(highScores.end(),highScore_t(name.c_str(),score));
+				break;
+			}
+		}
 		
 		//Remove a high score from the list if there are too many
-		while(highScores.size() > maxNumHighScores)
-		{
-			int lowestScore = score;
-			list<highScore_t>::iterator terminator = highScores.end();
-			for(list<highScore_t>::iterator i=highScores.begin(); i != highScores.end(); i++)
-			{
-				if(lowestScore > (*i).getScore())
-				{
-					lowestScore = (*i).getScore();
-					terminator = i;
-				}
-			}
-			if(terminator != highScores.end()) highScores.erase(terminator);
-		}
+		while(highScores.size() > maxNumHighScores) highScores.pop_back();
 		
 		//Save the high scores to a file
 		if(saveHighScores(highScores) == 1) mvprintw(row-2,col/2-strlen("ERROR: Couldn't save to file")/2,"ERROR: Couldn't save to file");
@@ -686,31 +697,12 @@ void highScoresScreen(list<highScore_t> &highScores)
 		mvprintw(row-1,col/2-strlen(scoresQuit)/2,"%s",scoresQuit);
 		
 		//Print the high scores
-		int previousScore = 0;
-		for(list<highScore_t>::iterator i=highScores.begin(); i != highScores.end(); i++)
+		int listPos = 1;
+		for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
 		{
-			//Get the highest score
-			if((*i).getScore() > previousScore) previousScore = (*i).getScore();
-		}
-		
-		int nextScore = 0;
-		list<list<highScore_t>::iterator> iteratorList;
-		for(int i = 0; i< highScores.size(); i++)
-		{
-			//Erase everything from iterator list
-			iteratorList.erase(iteratorList.begin(),iteratorList.end());
-			
-			//Find the next highest score
-			for(list<highScore_t>::iterator j=highScores.begin(); j != highScores.end(); j++)
-			{
-				//if((*j).getScore() < highestScore && ((*j).getScore()
-			}
-			
-			//Find all items with next highest score
-			
-			//Order them alphabetically
-			
-			//Print them to the screen
+			mvprintw(row/5+2+listPos,col/5,"%i. %s: %i",listPos,(*i).getName(),(*i).getScore());
+			listPos++;
+			if(row/5+2+listPos > row-3) break;
 		}
 		
 		//Move cursor to (0,0)
@@ -794,7 +786,32 @@ int loadHighScores(list<highScore_t> &highScores)
 				//Record score
 				tempScore = atoi(currentLine+i+1);
 				
-				highScores.push_back(highScore_t(tempName,tempScore));
+				//Place new high score record in correct position in list - preserve ordering of list.
+				if(highScores.empty()) highScores.push_front(highScore_t(tempName,tempScore));
+				else for(list<highScore_t>::iterator j = highScores.begin(); j != highScores.end(); j++)
+				{
+					if(tempScore > (*j).getScore())
+					{
+						highScores.insert(j,highScore_t(tempName,tempScore));
+						break;
+					}
+					else if(tempScore == (*j).getScore()) //Compare Names
+					{
+						if(strcmp(tempName,(*j).getName()) < 0)
+						{
+							highScores.insert(j,highScore_t(tempName,tempScore));
+							break;
+						}
+						else if(strcmp(tempName,(*j).getName()) == 0) break; //If name AND score is the same then ignore this score to prevent it being inserted multiple times
+					}
+					
+					//If we're about to get to the end and haven't found a place for the high score, place it at the end
+					if(j == --highScores.end())
+					{
+						highScores.insert(highScores.end(),highScore_t(tempName,tempScore));
+						break;
+					}
+				}
 				break;
 			}
 		}
