@@ -350,14 +350,29 @@ void playGame(list<highScore_t> &highScores)
 	//Set character reading to be non-blocking
 	nodelay(stdscr,TRUE);
 	
+	//Clear window
+	clear();
+	
 	//Get size of window
 	getmaxyx(stdscr,row,col);
+	
+	//Draw edges of play area
+	for(int i=0; i<col; i++) mvprintw(1,i,"%s","-");
+	for(int i=0; i<col; i++) mvprintw(row-1,i,"%s","-");
+	for(int i=2; i<row-1; i++) mvprintw(i,0,"%s","|");
+	for(int i=2; i<row-1; i++) mvprintw(i,col-1,"%s","|");
+	mvprintw(1,0,"O");
+	mvprintw(row-1,0,"O");
+	mvprintw(1,col-1,"O");
+	mvprintw(row-1,col-1,"O");
 	
 	//And God created the snake, saying, "Be fruitful and multiply"
 	snake.push_front(coord_t(row/2,col/2));
 	snake.push_front(coord_t(row/2,col/2+1));
 	snake.push_front(coord_t(row/2-1,col/2+1));
 	snake.push_front(coord_t(row/2-1,col/2));
+	
+	for(deque<coord_t>::iterator i = snake.begin(); i != snake.end(); i++) mvprintw((*i).y,(*i).x,"%s",snakeBodyChar);
 	
 	//Add a test fruit!
 	fruitMarket.push_front(fruit_t(row/2,col/2,gameTime,-1,100));
@@ -408,6 +423,7 @@ void playGame(list<highScore_t> &highScores)
 				//Remove expiring fruit
 				if((gameTime > (*i).expiryTime) && ((*i).expiryTime != -1))
 				{
+					mvprintw((*i).position.y,(*i).position.x," ");
 					i = fruitMarket.erase(i);
 					i--;
 					continue;
@@ -417,6 +433,7 @@ void playGame(list<highScore_t> &highScores)
 				if(predictor == (*i).position)
 				{
 					score += (*i).fruitPoints;
+					mvprintw((*i).position.y,(*i).position.x," ");
 					i = fruitMarket.erase(i);
 					i--;
 					gotFruit = true;
@@ -444,32 +461,17 @@ void playGame(list<highScore_t> &highScores)
 			}
 			
 			//Move snake
-			if(growSnake != true) snake.pop_back();
+			if(growSnake != true)
+			{
+				mvprintw((snake.back()).y,(snake.back().x)," ");
+				snake.pop_back();
+			}
 			else growSnake = false;
+			mvprintw((snake.front()).y,(snake.front().x),"%s",snakeBodyChar);
 			snake.push_front(predictor);
 		}
-				
-		//Clear window
-		clear();
 		
-		//Get size of window
-		getmaxyx(stdscr,row,col);
-
-		//Draw edges of play area
-		for(int i=0; i<col; i++) mvprintw(1,i,"%s","-");
-		for(int i=0; i<col; i++) mvprintw(row-1,i,"%s","-");
-		for(int i=2; i<row-1; i++) mvprintw(i,0,"%s","|");
-		for(int i=2; i<row-1; i++) mvprintw(i,col-1,"%s","|");
-		mvprintw(1,0,"O");
-		mvprintw(row-1,0,"O");
-		mvprintw(1,col-1,"O");
-		mvprintw(row-1,col-1,"O");
-		
-		//Draw snake!
-		for(deque<coord_t>::iterator i=snake.begin(); i != snake.end(); i++)
-		{
-			mvprintw((*i).y,(*i).x,"%s",snakeBodyChar);
-		}
+		//Draw snake's head and tail
 		mvprintw((snake.front()).y,(snake.front()).x,"%s",snakeHeadChar);
 		if((snake.front() != snake.back()) && (strcmp(snakeTailChar,"") != 0)) mvprintw((snake.back()).y,(snake.back()).x,"%s",snakeTailChar);
 		
@@ -486,6 +488,7 @@ void playGame(list<highScore_t> &highScores)
 		}
 		
 		//Draw timer and score
+		for(int i=0; i<col; i++) mvprintw(0,i," ");
 		mvprintw(0,col/4-(strlen("Timer: ")+(int)log10(gameTime+0.1)+1)/2,"Timer: %i",gameTime);
 		mvprintw(0,col-1-col/4-(strlen("Score: ")+(int)log10(score+0.1)+1)/2,"Score: %i",score);
 		
@@ -696,11 +699,20 @@ void highScoresScreen(list<highScore_t> &highScores)
 		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row-1,col/2-strlen(scoresQuit)/2,"%s",scoresQuit);
 		
+		int maxLength = 0;
+		//Find what the largest high score name length is to position the list on the screen
+		for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
+		{
+			int currLength = strlen((*i).getName());
+			if(currLength > maxLength) maxLength = currLength;
+		}
+		
 		//Print the high scores
 		int listPos = 1;
 		for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
 		{
-			mvprintw(row/5+2+listPos,col/5,"%i. %s: %i",listPos,(*i).getName(),(*i).getScore());
+			mvprintw(row/5+2+listPos,col/2-(strlen((*i).getName())+1),"%s: %i",(*i).getName(),(*i).getScore());
+			mvprintw(row/5+2+listPos,col/2-(maxLength+4),"%i.",listPos);
 			listPos++;
 			if(row/5+2+listPos > row-3) break;
 		}
@@ -785,6 +797,7 @@ int loadHighScores(list<highScore_t> &highScores)
 				
 				//Record score
 				tempScore = atoi(currentLine+i+1);
+				if((tempScore == 0) || (tempScore < 0)) break;
 				
 				//Place new high score record in correct position in list - preserve ordering of list.
 				if(highScores.empty()) highScores.push_front(highScore_t(tempName,tempScore));
