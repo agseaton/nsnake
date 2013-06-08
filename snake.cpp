@@ -11,6 +11,7 @@
 #include <cmath>
 #include <fstream>
 #include <string>
+#include <chrono>
 
 //Platform specific headers :(
 #include <ncurses.h>
@@ -107,8 +108,8 @@ class highScore_t
 //***************************************************************************//
 
 void playGame(list<highScore_t> &highScores); //Function to handle the game
-bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest); //Checks whether it is time to produce a fruit
-void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake, int youngest); //Adds a fruit to the list - the fruits get drawn later
+bool isFruitReady(int gameTime, list<fruit_t> &fruitMarket, int &youngest); //Checks whether it is time to produce a fruit
+void placeFruit(int gameTime, list<fruit_t> &fruitMarket, deque<coord_t> &snake, int youngest); //Adds a fruit to the list - the fruits get drawn later
 void gameOver(int score, list<highScore_t> &highScores); //Function to display game over screen
 
 void optionsMenu();	//Function to display options menu
@@ -273,7 +274,7 @@ int main()
 //TODO: Sort out these two functions!
 
 //Checks whether a fruit is ready to be placed
-bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest)
+bool isFruitReady(int gameTime, list<fruit_t> &fruitMarket, int &youngest)
 {
 	//If no fruits are present then we need a new one.
 	if(fruitMarket.empty()) return 1;
@@ -287,7 +288,7 @@ bool isFruitReady(time_t gameTime, list<fruit_t> &fruitMarket, int &youngest)
 }
 
 //Places (i.e. generates coordinates for) a fruit
-void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake, int youngest)
+void placeFruit(int gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snake, int youngest)
 {
 	//Get size of window
 	int row,col;
@@ -332,23 +333,36 @@ void placeFruit(time_t gameTime, list<fruit_t> &fruitMarket,deque<coord_t> &snak
 
 void playGame(list<highScore_t> &highScores)
 {
+	//In game objects
 	deque<coord_t> snake; //Position of snake
 	list<fruit_t> fruitMarket; //List of fruits currently in use
+	int youngest = 0; //age of youngest fruit
 	
-	time_t initTime; //Epoch time of start of game (seconds)
-	time_t gameTime = 0; //Current time, measured in seconds with 0 as time game started
-	int ch; //Stores latest character from stdin
-	int row,col; //Size of play area (currently dynamic) TODO: Fix these values in some way
-	
+	//Variables for tracking motion of snake
 	int direction=-1; //Direction of motion of snake (-1: uninitialised, 0: up, 1: down, 2: right, 3: left)
 	coord_t predictor(-1,-1); //Predicted position of snake
 	bool gotFruit = false; //If true, signals that snake will eat a fruit *next* turn
 	bool growSnake = false; //If true, signals that snake has eaten a fruit this turn and should grow
-	int score = 0;
-	int youngest = 0; //age of youngest fruit
 	
-	//Set character reading to be non-blocking
-	nodelay(stdscr,TRUE);
+	//Timing variables
+	chrono::system_clock::time_point gameInitTime; //Time at start of game
+	chrono::system_clock::time_point loopStartTime; //Time at start of main loop
+	chrono::system_clock::time_point loopFinishTime; //Time at end of main loop
+	double loopElapsedTime;
+	int gameTime = 0; //Time in seconds since beginning of game
+	
+	//Input variables
+	int ch; //Stores latest character from stdin
+	
+	//Window parameters
+	int row,col; //Size of play area (currently dynamic) TODO: Fix these values in some way
+	
+	//The score
+	int score = 0;
+	
+/*****************************************************************************/
+	//Set character reading to be blocking
+	nodelay(stdscr,FALSE);
 	
 	//Clear window
 	clear();
@@ -372,13 +386,57 @@ void playGame(list<highScore_t> &highScores)
 	snake.push_front(coord_t(row/2-1,col/2+1));
 	snake.push_front(coord_t(row/2-1,col/2));
 	
-	for(deque<coord_t>::iterator i = snake.begin(); i != snake.end(); i++) mvprintw((*i).y,(*i).x,"%s",snakeBodyChar);
+	//Draw the snake's initial position
+	for(deque<coord_t>::iterator i = ++snake.begin(); i != snake.end(); i++) mvprintw((*i).y,(*i).x,"%s",snakeBodyChar);
+	mvprintw(snake.front().y,snake.front().x,"%s",snakeHeadChar);
+	if((snake.front() != snake.back()) && (strcmp(snakeTailChar,"") != 0)) mvprintw((snake.back()).y,(snake.back()).x,"%s",snakeTailChar);
 	
 	//Add a test fruit!
 	fruitMarket.push_front(fruit_t(row/2,col/2,gameTime,-1,100));
+	mvprintw(fruitMarket.front().position.y,fruitMarket.back().position.x,"%s",fruitChar); //Draw it
 	
+	//Draw timer and score
+	for(int i=0; i<col; i++) mvprintw(0,i," ");
+	mvprintw(0,col/4-(strlen("Timer: ")+2)/2,"Timer: 0");
+	mvprintw(0,col-1-col/4-(strlen("Score: ")+2)/2,"Score: 0");
+	
+	//Move cursor back to top left hand corner
+	move(0,0);
+	
+	//Copy virtual buffer to console and display everything!
+	refresh();
+
+/*****************************************************************************/
+	//Wait until the user starts the game
 	while(true)
 	{
+		//Read character from input buffer
+		ch=wgetch(stdscr);
+		
+		//Interpret user input
+		if(ch == 'q') return;
+		else if(ch == KEY_UP) { direction=0; break; }
+		else if(ch == KEY_DOWN) { direction=1; break; }
+		else if(ch == KEY_RIGHT) { direction=2; break; }
+		else if(ch == KEY_LEFT) { direction=3; break; }
+	}
+	
+	//Get ready to start the game
+	//Set character reading to be non-blocking
+	nodelay(stdscr,TRUE);
+	
+	gameInitTime = chrono::system_clock::now(); //Record time to mark start of game
+
+/*****************************************************************************/
+	//Game main loop
+	while(true)
+	{
+		//Get time of start of loop
+		loopStartTime = chrono::system_clock::now();
+		
+		//Get time in seconds since start of game
+		gameTime = (chrono::duration_cast<chrono::duration<int>>(loopStartTime-gameInitTime)).count();
+		
 		//Read character from input buffer
 		ch=wgetch(stdscr);
 		
@@ -392,84 +450,76 @@ void playGame(list<highScore_t> &highScores)
 		else if(ch == KEY_RIGHT) { if(direction != 3) direction=2; }
 		else if(ch == KEY_LEFT) { if(direction != 2) direction=3; }
 		
-		if(direction == -1) initTime = time(NULL); //Record time to mark start of game (last time this executes will be the start of the game)
+		//Calculate where the snake will move
+		predictor = snake.front();
 		
-		if(direction != -1) //Only do this stuff if the game has started!
+		if(direction == 0) predictor.y--;
+		else if(direction == 1)	predictor.y++;
+		else if(direction == 2) predictor.x++;
+		else if(direction == 3)	predictor.x--;
+		
+		//Sort out fruit related issues
+		if(isFruitReady(gameTime, fruitMarket,youngest)) placeFruit(gameTime, fruitMarket, snake,youngest); //If a fruit is ready to be placed, place it!
+		
+		if(gotFruit)
 		{
-			//Get the time
-			gameTime = time(NULL)-initTime;
-			
-			//Calculate where the snake will move
-			predictor = snake.front();
-			
-			if(direction == 0) predictor.y--;
-			else if(direction == 1)	predictor.y++;
-			else if(direction == 2) predictor.x++;
-			else if(direction == 3)	predictor.x--;
-			
-			//Sort out fruit related issues
-			if(isFruitReady(gameTime, fruitMarket,youngest)) placeFruit(gameTime, fruitMarket, snake,youngest); //If a fruit is ready to be placed, place it!
-			
-			if(gotFruit)
+			growSnake = true;
+			gotFruit = false;
+		}
+		
+		//Run through fruit and remove any the snake is about to eat or that are about to expire
+		for(list<fruit_t>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
+		{
+			//Warning: Iterator after an item is removed may not be valid!
+			//Remove expiring fruit
+			if((gameTime > (*i).expiryTime) && ((*i).expiryTime != -1))
 			{
-				growSnake = true;
-				gotFruit = false;
+				mvprintw((*i).position.y,(*i).position.x," ");
+				i = fruitMarket.erase(i);
+				i--;
+				continue;
 			}
 			
-			//Run through fruit and remove any the snake is about to eat or that are about to expire
-			for(list<fruit_t>::iterator i=fruitMarket.begin(); i != fruitMarket.end(); i++)
+			//Remove fruits that are in the path of the snake
+			if(predictor == (*i).position)
 			{
-				//Warning: Iterator after an item is removed may not be valid!
-				//Remove expiring fruit
-				if((gameTime > (*i).expiryTime) && ((*i).expiryTime != -1))
-				{
-					mvprintw((*i).position.y,(*i).position.x," ");
-					i = fruitMarket.erase(i);
-					i--;
-					continue;
-				}
-				
-				//Remove fruits that are in the path of the snake
-				if(predictor == (*i).position)
-				{
-					score += (*i).fruitPoints;
-					mvprintw((*i).position.y,(*i).position.x," ");
-					i = fruitMarket.erase(i);
-					i--;
-					gotFruit = true;
-				}
+				score += (*i).fruitPoints;
+				mvprintw((*i).position.y,(*i).position.x," ");
+				i = fruitMarket.erase(i);
+				i--;
+				gotFruit = true;
 			}
-			
-			//Check if snake is about to hit a wall
-			if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2)
+		}
+		
+		//Check if snake is about to hit a wall
+		if(predictor.y < 2 || predictor.y > row-2 || predictor.x < 1 || predictor.x > col-2)
+		{
+			gameOver(score, highScores);
+			return;
+		}
+		
+		//Check if snake is about to hit itself
+		//Note: the snake can move into the space currently occupied by the last part of its tail, unless it has just received a fruit.
+		for(deque<coord_t>::iterator i=snake.begin();
+		    ((i != (--snake.end())) && (!growSnake)) || ((i != snake.end()) && growSnake);
+		    i++)
+		{
+			if(predictor == *i)
 			{
 				gameOver(score, highScores);
 				return;
 			}
-			
-			//Check if snake is about to hit itself
-			//Note: the snake can move into the space currently occupied by the last part of its tail, unless it has just received a fruit.
-			for(deque<coord_t>::iterator i=snake.begin();
-			    ((i != (--snake.end())) && (!growSnake)) || ((i != snake.end()) && growSnake);
-			    i++)
-			{
-				if(predictor == *i)
-				{
-					gameOver(score, highScores);
-					return;
-				}
-			}
-			
-			//Move snake
-			if(growSnake != true)
-			{
-				mvprintw((snake.back()).y,(snake.back().x)," ");
-				snake.pop_back();
-			}
-			else growSnake = false;
-			mvprintw((snake.front()).y,(snake.front().x),"%s",snakeBodyChar);
-			snake.push_front(predictor);
 		}
+		
+		//Move snake
+		if(growSnake != true)
+		{
+			mvprintw((snake.back()).y,(snake.back().x)," ");
+			snake.pop_back();
+		}
+		else growSnake = false;
+		mvprintw((snake.front()).y,(snake.front().x),"%s",snakeBodyChar);
+		snake.push_front(predictor);
 		
 		//Draw snake's head and tail
 		mvprintw((snake.front()).y,(snake.front()).x,"%s",snakeHeadChar);
@@ -498,8 +548,15 @@ void playGame(list<highScore_t> &highScores)
 		//Copy virtual buffer to console and display everything!
 		refresh();
 		
-		//Wait for a second
-		usleep(gameTurnTime*1000000);
+		//Wait for an amount of time such that each turn is equivalent to the game turn time
+		loopFinishTime = chrono::system_clock::now();
+		
+		loopElapsedTime = (chrono::duration_cast<chrono::duration<double>>(loopFinishTime-loopStartTime)).count();
+		
+		//Sleep for the amount of time remaining in a turn
+		for(int i=0; i<col; i++) mvprintw(3,i," ");
+		mvprintw(3,0,"%f",loopElapsedTime);
+		usleep((gameTurnTime-loopElapsedTime)*1000000);
 	}
 }
 
