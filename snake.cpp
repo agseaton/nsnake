@@ -548,16 +548,20 @@ void playGame(list<highScore_t> &highScores)
 		//Copy virtual buffer to console and display everything!
 		refresh();
 		
-		//Wait for an amount of time such that each turn is equivalent to the game turn time
+		//Determine the time and thus time elapsed since beginning of loop
 		loopFinishTime = chrono::system_clock::now();
-		
 		loopElapsedTime = (chrono::duration_cast<chrono::duration<double>>(loopFinishTime-loopStartTime)).count();
 		
-		//Sleep for the amount of time remaining in a turn
+		//Draw performance monitor (for debugging)
+		/*
 		for(int i=0; i<col; i++) mvprintw(3,i," ");
 		mvprintw(3,0,"%f",loopElapsedTime);
 		for(int i=0; i<col; i++) mvprintw(4,i," ");
 		for(int i=0; i<(loopElapsedTime*100000.0); i++) mvprintw(4,i,"%s","*");
+		move(0,0);
+		*/
+		
+		//Sleep for the amount of time remaining in a turn
 		usleep((gameTurnTime-loopElapsedTime)*1000000);
 	}
 }
