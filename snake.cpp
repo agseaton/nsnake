@@ -128,7 +128,7 @@ double exponential(double rate); //Function to generate an exponential distribut
 
 const double gameTurnTime = 0.25; //Length of a turn (seconds)
 const double endWaitTime = 1.5; //Length of time to show players their demise
-const int maxNumHighScores = 10; // Maximum number of high scores allowed
+const unsigned int maxNumHighScores = 10; // Maximum number of high scores allowed
 double rate = 1.0/10; //rate at which fruits will be generated (in units of /second)
 
 //***************************************************************************//
@@ -556,6 +556,8 @@ void playGame(list<highScore_t> &highScores)
 		//Sleep for the amount of time remaining in a turn
 		for(int i=0; i<col; i++) mvprintw(3,i," ");
 		mvprintw(3,0,"%f",loopElapsedTime);
+		for(int i=0; i<col; i++) mvprintw(4,i," ");
+		for(int i=0; i<(loopElapsedTime*100000.0); i++) mvprintw(4,i,"%s","*");
 		usleep((gameTurnTime-loopElapsedTime)*1000000);
 	}
 }
@@ -619,7 +621,7 @@ void gameOver(int score,list<highScore_t> &highScores)
 			else if((ch >= KEY_MIN) && (ch <= KEY_MAX)) { ch = 0; }
 			else name += ch;
 		
-			for(int i=0; i<name.length()+2; i++) mvprintw(row/2+6,col/2-(name.length()+1)/2-1+i," ");
+			for(unsigned int i=0; i<name.length()+2; i++) mvprintw(row/2+6,col/2-(name.length()+1)/2-1+i," ");
 			mvprintw(row/2+6,col/2-(name.length()+1)/2,"%s",name.c_str());
 		
 			refresh();
@@ -756,20 +758,31 @@ void highScoresScreen(list<highScore_t> &highScores)
 		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row-1,col/2-strlen(scoresQuit)/2,"%s",scoresQuit);
 		
-		int maxLength = 0;
+		int maxScoreLength = (int)log10((float)highScores.front().getScore()+0.1)+1;
+		int maxNameLength = 0;
 		//Find what the largest high score name length is to position the list on the screen
 		for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
 		{
 			int currLength = strlen((*i).getName());
-			if(currLength > maxLength) maxLength = currLength;
+			if(currLength > maxNameLength) maxNameLength = currLength;
 		}
 		
 		//Print the high scores
 		int listPos = 1;
 		for(list<highScore_t>::iterator i = highScores.begin(); i != highScores.end(); i++)
 		{
-			mvprintw(row/5+2+listPos,col/2-(strlen((*i).getName())+1),"%s: %i",(*i).getName(),(*i).getScore());
-			mvprintw(row/5+2+listPos,col/2-(maxLength+4),"%i.",listPos);
+			if(maxScoreLength > maxNameLength)
+			{
+				mvprintw(row/5+2+listPos,col/2-maxScoreLength-2,"%s",(*i).getName());
+				mvprintw(row/5+2+listPos,col/2+maxScoreLength+2-(int)log10((float)(*i).getScore()+0.1),"%i",(*i).getScore());
+				mvprintw(row/5+2+listPos,col/2-maxScoreLength-(int)log10((float)listPos+0.1)-5,"%i. ",listPos);
+			}
+			else
+			{
+				mvprintw(row/5+2+listPos,col/2-maxNameLength-2,"%s",(*i).getName());
+				mvprintw(row/5+2+listPos,col/2+maxNameLength+2-(int)log10((float)(*i).getScore()+0.1),"%i",(*i).getScore());
+				mvprintw(row/5+2+listPos,col/2-maxNameLength-(int)log10((float)listPos+0.1)-5,"%i. ",listPos);
+			}
 			listPos++;
 			if(row/5+2+listPos > row-3) break;
 		}
@@ -836,7 +849,7 @@ int loadHighScores(list<highScore_t> &highScores)
 		
 		//Find position of delimiter (',') in line and attempt to parse the name and score
 		//Expected format: <name>,<score>
-		for(int i=0; i<strlen(currentLine); i++)
+		for(unsigned int i=0; i<strlen(currentLine); i++)
 		{			
 			if(currentLine[i] == ',')
 			{
@@ -848,7 +861,7 @@ int loadHighScores(list<highScore_t> &highScores)
 				if(strcmp(tempName,"") == 0) break;
 				
 				bool isWhiteSpace = true;
-				for(int j=0; j<strlen(tempName); j++) if(tempName[j] != ' ') isWhiteSpace = false;
+				for(unsigned int j=0; j<strlen(tempName); j++) if(tempName[j] != ' ') isWhiteSpace = false;
 				
 				if(isWhiteSpace == true) break;
 				
@@ -921,7 +934,7 @@ int saveHighScores(list<highScore_t> &highScores)
 void streetCred()
 {
 	int ch;
-	int row,col; //Size of console
+	unsigned int row,col; //Size of console
 	
 	while(true)
 	{
@@ -937,7 +950,7 @@ void streetCred()
 		attroff(A_UNDERLINE | A_BOLD);
 		mvprintw(row-1,col/2-strlen(creditsQuit)/2,"%s",creditsQuit);
 		
-		for(int i=0; (i<(sizeof(creditsText)/sizeof(const char*))) && (row/5+3+i < row-3); i++)
+		for(unsigned int i=0; (i<(sizeof(creditsText)/sizeof(const char*))) && (row/5+3+i < row-3); i++)
 		{ mvprintw(row/5+3+i,col/2-strlen(creditsText[i])/2,"%s",creditsText[i]); }
 		
 		//Move cursor to (0,0)
