@@ -346,10 +346,10 @@ void playGame(list<highScore_t> &highScores)
 	
 	//Timing variables
 	chrono::system_clock::time_point gameInitTime; //Time at start of game
-	chrono::system_clock::time_point loopStartTime; //Time at start of main loop
 	chrono::system_clock::time_point loopFinishTime; //Time at end of main loop
-	double loopElapsedTime;
-	int gameTime = 0; //Time in seconds since beginning of game
+	double totalElapsedTime; //Time elapsed since start of game by end of main loop
+	unsigned int gameTime = 0; //Time in seconds since beginning of game
+	unsigned int turnNum = 0; //Which turn is this?
 	
 	//Input variables
 	int ch; //Stores latest character from stdin
@@ -431,11 +431,11 @@ void playGame(list<highScore_t> &highScores)
 	//Game main loop
 	while(true)
 	{
-		//Get time of start of loop
-		loopStartTime = chrono::system_clock::now();
+		//Increment turn counter
+		turnNum++;
 		
 		//Get time in seconds since start of game
-		gameTime = (chrono::duration_cast<chrono::duration<int>>(loopStartTime-gameInitTime)).count();
+		gameTime = turnNum*gameTurnTime;
 		
 		//Read character from input buffer
 		ch=wgetch(stdscr);
@@ -548,21 +548,12 @@ void playGame(list<highScore_t> &highScores)
 		//Copy virtual buffer to console and display everything!
 		refresh();
 		
-		//Determine the time and thus time elapsed since beginning of loop
+		//Determine the time and thus time elapsed since beginning of game
 		loopFinishTime = chrono::system_clock::now();
-		loopElapsedTime = (chrono::duration_cast<chrono::duration<double>>(loopFinishTime-loopStartTime)).count();
+		totalElapsedTime = (chrono::duration_cast<chrono::duration<double>>(loopFinishTime-gameInitTime)).count();
 		
-		//Draw performance monitor (for debugging)
-		/*
-		for(int i=0; i<col; i++) mvprintw(3,i," ");
-		mvprintw(3,0,"%f",loopElapsedTime);
-		for(int i=0; i<col; i++) mvprintw(4,i," ");
-		for(int i=0; i<(loopElapsedTime*100000.0); i++) mvprintw(4,i,"%s","*");
-		move(0,0);
-		*/
-		
-		//Sleep for the amount of time remaining in a turn
-		usleep((gameTurnTime-loopElapsedTime)*1000000);
+		//Sleep for the amount of time remaining in the turn
+		usleep(((gameTurnTime*turnNum)-totalElapsedTime)*1000000);
 	}
 }
 
